@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SODA567 | 视觉创作者</title>
+<meta name="description" content="Soda的个人作品集，用镜头记录世界，用代码创造工具。展示视频创作、摄影作品和在线工具。">
+<meta name="keywords" content="视觉创作,视频制作,摄影,作品集,Soda567">
+<meta name="author" content="Soda">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --gold: #ffd700;
+  --text: #ffffff;
+  --muted: #888;
+  --border: #222;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', -apple-system, sans-serif;
+  font-weight: 200;
+  line-height: 1.6;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(10,10,10,0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.2rem;
+  font-weight: 300;
+  letter-spacing: 1px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav-links {
+  display: flex;
+  gap: 40px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 300;
+  transition: color 0.3s;
+}
+
+.nav-links a:hover {
+  color: var(--text);
+}
+
+/* HERO */
+/* HERO */
+#hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 100px 40px 60px;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 80px 48px;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.hero-bg-item {
+  aspect-ratio: 2/3;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.hero-bg-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(100%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 900px;
+}
+
+.hero-content {
+  max-width: 900px;
+}
+
+.hero-title {
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 200;
+  letter-spacing: -3px;
+  font-weight: 200;
+  letter-spacing: -3px;
+  line-height: 1.1;
+  margin-bottom: 24px;
+  letter-spacing: -3px;
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  color: var(--muted);
+  margin-bottom: 40px;
+  font-weight: 300;
+}
+
+.hero-cta {
+  display: inline-flex;
+  gap: 16px;
+}
+
+.btn {
+  padding: 14px 32px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 300;
+  font-size: 0.95rem;
+  transition: all 0.3s;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background: var(--gold);
+  color: var(--bg);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255,215,0,0.3);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--text);
+}
+
+/* SECTION */
+section {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 80px 40px;
+}
+
+.section-header {
+  margin-bottom: 48px;
+}
+
+.section-label {
+  font-size: 0.75rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 12px;
+  font-weight: 400;
+}
+
+.section-title {
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 200;
+  font-weight: 200;
+  letter-spacing: -2px;
+  font-weight: 200;
+}
+
+/* WORKS GRID */
+.works-filter {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 40px;
+  justify-content: center;
+}
+
+.filter-btn {
+  padding: 8px 20px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 300;
+  transition: all 0.3s;
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.works-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  grid-auto-rows: 200px;
+  grid-auto-flow: dense;
+}
+
+.work-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 0 20px rgba(255,215,0,0.1);
+  cursor: pointer;
+  background: var(--surface);
+  transition: transform 0.3s;
+  height: 100%;
+}
+
+.work-item:hover {
+  transform: translateY(-4px);
+}
+
+.work-item.portrait {
+  grid-row: span 4;
+}
+
+.work-item.landscape {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.work-item.square {
+  grid-row: span 2;
+}
+
+.work-item video,
+.work-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.work-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 60%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 24px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.work-item:hover .work-overlay {
+  opacity: 1;
+}
+
+.work-title {
+  font-size: 1rem;
+  font-weight: 400;
+  margin-bottom: 4px;
+}
+
+.work-meta {
+  font-size: 0.75rem;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+
+.work-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  border: 2px solid white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.work-item.is-video:hover .work-play {
+  opacity: 1;
+}
+
+.work-play::after {
+  content: '';
+  margin-left: 4px;
+  border-left: 14px solid white;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+}
+
+/* TOOLS SECTION */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.tool-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 32px;
+  text-decoration: none;
+  display: block;
+  transition: all 0.3s;
+}
+
+.tool-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-4px);
+}
+
+.tool-icon {
+  font-size: 2rem;
+  margin-bottom: 16px;
+}
+
+.tool-name {
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.tool-desc {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .nav-container {
+    padding: 16px 24px;
+  }
+  
+  .nav-links {
+    gap: 24px;
+  }
+  
+  section {
+    padding: 60px 24px;
+  }
+  
+  .works-grid,
+  .tools-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px;
+  }
+  
+  .work-item.landscape {
+    grid-column: span 1;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-container">
+    <a href="#" class="logo">SODA567</a>
+    <ul class="nav-links">
+      <li><a href="#works">作品</a></li>
+      <li><a href="tools/index.html">工具</a></li>
+      <li><a href="#about">关于</a></li>
+      <li><a href="#contact">联系</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg">
+    <div class="hero-bg-item"><img src="https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=400&h=600&fit=crop" alt=""></div>
+    <div class="hero-bg-item"><img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&h=600&fit=crop" alt=""></div>
+    <div class="hero-bg-item"><img src="https://images.unsplash.com/photo-1514565131-fce0801e5785?w=400&h=600&fit=crop" alt=""></div>
+  </div>
+  <div class="hero-content">
+    <h1 class="hero-title">视觉创作者</h1>
+    <p class="hero-subtitle">用镜头记录世界，用代码创造工具</p>
+    <div class="hero-cta">
+      <a href="#works" class="btn btn-primary">查看作品</a>
+      <a href="tools/index.html" class="btn btn-secondary">在线工具</a>
+    </div>
+  </div>
+</section>
+
+<!-- WORKS -->
+<section id="works">
+  <div class="section-header">
+    <div class="section-label">Portfolio</div>
+    <h2 class="section-title">作品集</h2>
+  </div>
+  <div class="works-filter">
+    <button class="filter-btn active" data-filter="all">全部</button>
+    <button class="filter-btn" data-filter="video">视频</button>
+    <button class="filter-btn" data-filter="photo">照片</button>
+  </div>
+  <div class="works-grid" id="worksGrid">
+
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/pre_post/01e273c07d229c13010370038094283ae6_259.mp4?sign=548af5c4b2f6aa7b557e9fef35ebe9ea&t=69ac3d08" >
+      <video src="https://sns-video-qc.xhscdn.com/pre_post/01e273c07d229c13010370038094283ae6_259.mp4?sign=548af5c4b2f6aa7b557e9fef35ebe9ea&t=69ac3d08" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">洛丽塔</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/stream/1/110/115/01e89e041cb8633d0103700198a941aaf0_115.mp4?sign=bd56ad3f85813322309136ee51602c7b&t=69ac3ac3" >
+      <video src="https://sns-video-qc.xhscdn.com/stream/1/110/115/01e89e041cb8633d0103700198a941aaf0_115.mp4?sign=bd56ad3f85813322309136ee51602c7b&t=69ac3ac3" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">新疆旅行</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-hw.xhscdn.com/stream/1/110/84/01e7a3255907167c0103700194d54ab803_84.mp4" >
+      <video src="https://sns-video-hw.xhscdn.com/stream/1/110/84/01e7a3255907167c0103700194d54ab803_84.mp4" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">城市光影</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/8fe0627f75bd673f7c03ab97a9fd79e92b7d4118_v1?sign=e39527512885563733c635cb0ae60f22&t=69ac3ea3" >
+      <video src="https://sns-video-qc.xhscdn.com/8fe0627f75bd673f7c03ab97a9fd79e92b7d4118_v1?sign=e39527512885563733c635cb0ae60f22&t=69ac3ea3" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">上海City</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/stream/110/4/01e66133cd7c413b010377038febb2af03_4.mp4?sign=45172c1a854ab86198055c4abd19febf&t=69ac3b9e" >
+      <video src="https://sns-video-qc.xhscdn.com/stream/110/4/01e66133cd7c413b010377038febb2af03_4.mp4?sign=45172c1a854ab86198055c4abd19febf&t=69ac3b9e" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">山顶的风</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/d6835f71d2cfedba07cf66ef2606bab5d6f0601e_v1?sign=f9aa23e391a70d45353f7b0b1d56f0dd&t=69ac3ecf" >
+      <video src="https://sns-video-qc.xhscdn.com/d6835f71d2cfedba07cf66ef2606bab5d6f0601e_v1?sign=f9aa23e391a70d45353f7b0b1d56f0dd&t=69ac3ecf" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">喜欢和你虚度时光的日子</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/stream/110/4/01e65d5b64492f21010370038fdcad4271_4.mp4?sign=9727db50dde0be616da8d376d3263e5a&t=69ac3bd4" >
+      <video src="https://sns-video-qc.xhscdn.com/stream/110/4/01e65d5b64492f21010370038fdcad4271_4.mp4?sign=9727db50dde0be616da8d376d3263e5a&t=69ac3bd4" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">特克斯河</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/3b224e85a780333dd4e6b6d41fe7bd345e984db9_r_ln?sign=5627d2f1cce07d3e3d6e16ab3aa42b0f&t=69ac3d94" >
+      <video src="https://sns-video-qc.xhscdn.com/3b224e85a780333dd4e6b6d41fe7bd345e984db9_r_ln?sign=5627d2f1cce07d3e3d6e16ab3aa42b0f&t=69ac3d94" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">浪漫的开始</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/stream/110/4/01e65fc9f67c4180010370038fe62d1d17_4.mp4?sign=e5cddb63035dda62f62bed5b5b706298&t=69ac3bfb" >
+      <video src="https://sns-video-qc.xhscdn.com/stream/110/4/01e65fc9f67c4180010370038fe62d1d17_4.mp4?sign=e5cddb63035dda62f62bed5b5b706298&t=69ac3bfb" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">秋千</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/bcf658368b3164fa60f36cd7b48119097ad15a58_r_ln?sign=20ddc10cc44dcc6abb3e32da9ac294f2&t=69ac3e79" >
+      <video src="https://sns-video-qc.xhscdn.com/bcf658368b3164fa60f36cd7b48119097ad15a58_r_ln?sign=20ddc10cc44dcc6abb3e32da9ac294f2&t=69ac3e79" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">蓝色星球</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/stream/110/4/01e6592e79425ee2010370038fcc5ffe5b_4.mp4?sign=24ec243a492c9786228e1989ec5ac5c0&t=69ac3c53" >
+      <video src="https://sns-video-qc.xhscdn.com/stream/110/4/01e6592e79425ee2010370038fcc5ffe5b_4.mp4?sign=24ec243a492c9786228e1989ec5ac5c0&t=69ac3c53" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">村落</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/stream/110/4/01e5a0c3fc4f3ccf010370038cfc0226d4_4.mp4?sign=4618dba827ed6022ab6ed4087faf174b&t=69ac3c92" >
+      <video src="https://sns-video-qc.xhscdn.com/stream/110/4/01e5a0c3fc4f3ccf010370038cfc0226d4_4.mp4?sign=4618dba827ed6022ab6ed4087faf174b&t=69ac3c92" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">北戴河</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/stream/110/259/01e549db56b53098010370038ba8812c0c_259.mp4?sign=2d361f8d10c5ece85d9abc4eef3abbc3&t=69ac3cd2" >
+      <video src="https://sns-video-qc.xhscdn.com/stream/110/259/01e549db56b53098010370038ba8812c0c_259.mp4?sign=2d361f8d10c5ece85d9abc4eef3abbc3&t=69ac3cd2" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">路边野餐</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/pre_post/01e270620122acde018370038086ff5db4_259.mp4?sign=9055b8f490ac031e16ca646952f85c77&t=69ac3d2c" >
+      <video src="https://sns-video-qc.xhscdn.com/pre_post/01e270620122acde018370038086ff5db4_259.mp4?sign=9055b8f490ac031e16ca646952f85c77&t=69ac3d2c" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">春天旅馆</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/46d0ec45e756f9c60711e6d879ea6c6c51cd5e61_r?sign=0a096c96981997fbec12c00c8bac8ce3&t=69ac3d66" >
+      <video src="https://sns-video-qc.xhscdn.com/46d0ec45e756f9c60711e6d879ea6c6c51cd5e61_r?sign=0a096c96981997fbec12c00c8bac8ce3&t=69ac3d66" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">一个夏天的结束</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/37bed96c055441faedce29e66a3f3a687e9c9b7a_r?sign=8927932ad3a0c35bc9140991b5387a1c&t=69ac3de2" >
+      <video src="https://sns-video-qc.xhscdn.com/37bed96c055441faedce29e66a3f3a687e9c9b7a_r?sign=8927932ad3a0c35bc9140991b5387a1c&t=69ac3de2" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">未解的波</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+    
+    <div class="work-item is-video" data-type="video" data-src="https://sns-video-qc.xhscdn.com/845908bab74dc43b2a308fbf466fbdcdded25592_v1?sign=9182ce749a7742a02155d687b4f40a58&t=69ac3e38" >
+      <video src="https://sns-video-qc.xhscdn.com/845908bab74dc43b2a308fbf466fbdcdded25592_v1?sign=9182ce749a7742a02155d687b4f40a58&t=69ac3e38" muted loop playsinline style="pointer-events:none"></video>
+      <div class="work-overlay">
+        <div class="work-title">难免落俗</div>
+        <div class="work-meta">VIDEO · 2025</div>
+      </div>
+      <div class="work-play"></div>
+    </div>  </div>
+</section>
+
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="section-header">
+    <div class="section-label">About</div>
+    <h2 class="section-title">关于我</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;">
+    <div>
+      <h3 style="font-size:1.5rem;font-weight:300;margin-bottom:24px;">Soda</h3>
+      <p style="color:var(--muted);line-height:1.8;margin-bottom:20px;">
+        我是Soda,一名视觉创作者。热爱用镜头捕捉生活中的美好瞬间,用影像讲述动人的故事。
+      </p>
+      <p style="color:var(--muted);line-height:1.8;margin-bottom:20px;">
+        从城市的繁华到自然的静谧,从人文的温度到光影的诗意,每一帧画面都承载着我对世界的观察与思考。
+      </p>
+      <p style="color:var(--muted);line-height:1.8;">
+        期待与你分享这些关于光影、关于时间、关于生活的故事。
+      </p>
+    </div>
+    <div style="aspect-ratio:3/4;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">
+      <img src="images/profile.jpg" alt="Soda" style="width:100%;height:100%;object-fit:cover;">
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="section-header">
+    <div class="section-label">Contact</div>
+    <h2 class="section-title">联系方式</h2>
+  </div>
+  <div style="text-align:center;max-width:600px;margin:0 auto;">
+    <p style="color:var(--muted);margin-bottom:32px;">
+      如有合作或咨询，欢迎通过以下方式联系我
+    </p>
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="navigator.clipboard.writeText('1085029979@qq.com');alert('邮箱已复制: 1085029979@qq.com')">邮箱</button>
+      <button class="btn btn-secondary" onclick="navigator.clipboard.writeText('Superboy_Five');alert('微信号已复制: Superboy_Five')">微信</button>
+      <a href="https://www.xiaohongshu.com/user/profile/5ba72fcd27890d00014916e9" target="_blank" class="btn btn-secondary">小红书</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>&copy; 2025 SODA567. All rights reserved.</p>
+</footer>
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX'); // 替换成你的 GA ID
+</script>
+
+<script>
+// 从localStorage加载作品
+function loadWorksFromStorage() {
+  const saved = localStorage.getItem('soda_works');
+  if (!saved) return;
+
+  const works = JSON.parse(saved);
+  const grid = document.getElementById('worksGrid');
+
+  grid.innerHTML = works.map(w => {
+    let style = '';
+    if (w.span > 1) style += `grid-column:span ${w.span};`;
+    if (w.ratio && w.ratio !== 'auto') {
+      const ar = w.ratio === 'custom' ? `${w.customRatio.width}/${w.customRatio.height}` : w.ratio;
+      style += `aspect-ratio:${ar};`;
+    }
+    return `
+    <div class="work-item is-video" data-type="${w.type}" data-src="${w.url}" data-ratio="${w.ratio || 'auto'}" style="${style}">
+      <video src="${w.url}" muted loop playsinline></video>
+      <div class="work-overlay">
+        <div class="work-title">${w.title}</div>
+        <div class="work-meta">${w.type === 'video' ? 'VIDEO' : 'PHOTO'} · ${w.year}</div>
+      </div>
+      <div class="work-play"></div>
+    </div>
+  `}).join('');
+
+  setupHoverAndRatio();
+}
+
+loadWorksFromStorage();
+
+function setupHoverAndRatio() {
+  const workItems = document.querySelectorAll('.work-item');
+  workItems.forEach(item => {
+    const video = item.querySelector('video');
+    const img = item.querySelector('img');
+    const customRatio = item.dataset.ratio;
+
+    if (video) {
+      video.addEventListener('loadedmetadata', () => {
+        if (!customRatio || customRatio === 'auto') {
+          const ratio = video.videoWidth / video.videoHeight;
+          if (ratio > 1.2) {
+            item.classList.add('landscape');
+          } else if (ratio < 0.8) {
+            item.classList.add('portrait');
+          } else {
+            item.classList.add('square');
+          }
+        }
+      });
+      video.load();
+
+      item.addEventListener('mouseenter', () => {
+        video.play().catch(() => {});
+      });
+      item.addEventListener('mouseleave', () => {
+        video.pause();
+        video.currentTime = 0;
+      });
+    } else if (img) {
+      img.addEventListener('load', () => {
+        if (!customRatio || customRatio === 'auto') {
+          const ratio = img.naturalWidth / img.naturalHeight;
+          if (ratio > 1.2) {
+            item.classList.add('landscape');
+          } else if (ratio < 0.8) {
+            item.classList.add('portrait');
+          } else {
+            item.classList.add('square');
+          }
+        }
+      });
+    }
+  });
+}
+
+// 作品筛选
+const filterBtns = document.querySelectorAll('.filter-btn');
+filterBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    filterBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const filter = btn.dataset.filter;
+    const workItems = document.querySelectorAll('.work-item');
+    workItems.forEach(item => {
+      if (filter === 'all') {
+        item.style.display = 'block';
+      } else {
+        item.style.display = item.dataset.type === filter ? 'block' : 'none';
+      }
+    });
+  });
+});
+</script>
+
+
+<!-- 视频播放器 -->
+<div id="videoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target.id==='videoModal')closeVideo()">
+  <video id="modalVideo" controls style="max-width:90%;max-height:90%;"></video>
+  <button onclick="closeVideo()" style="position:absolute;top:20px;right:20px;background:transparent;border:2px solid white;color:white;font-size:2rem;width:50px;height:50px;border-radius:50%;cursor:pointer;">×</button>
+</div>
+
+<script>
+function closeVideo() {
+  const modal = document.getElementById('videoModal');
+  const video = document.getElementById('modalVideo');
+  modal.style.display = 'none';
+  video.pause();
+  video.src = '';
+}
+
+document.querySelectorAll('.work-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const videoSrc = item.dataset.src;
+    if (videoSrc) {
+      const modal = document.getElementById('videoModal');
+      const video = document.getElementById('modalVideo');
+      modal.style.display = 'flex';
+      video.src = videoSrc;
+      video.play();
+    }
+  });
+});
+</script>
+</body>
+</html>

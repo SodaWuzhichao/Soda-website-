@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>作品管理后台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #0a0a0a; color: #e8e8e8; }
+
+/* 登录页 */
+.login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.login-box { background: #1a1a1f; padding: 40px; border-radius: 8px; width: 90%; max-width: 400px; border: 1px solid #2a2a30; }
+.login-box h1 { margin-bottom: 24px; font-size: 1.5rem; font-weight: 300; }
+.login-box input { width: 100%; padding: 12px; background: #111; border: 1px solid #2a2a30; color: #e8e8e8; border-radius: 4px; margin-bottom: 16px; }
+.login-box button { width: 100%; padding: 12px; background: #f0c040; color: #0a0a0a; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; }
+.login-box button:hover { background: #f5d060; }
+.error { color: #ff4444; font-size: 0.9rem; margin-top: -8px; margin-bottom: 16px; }
+
+/* 管理页 */
+.admin-page { display: none; padding: 40px 20px; max-width: 1600px; margin: 0 auto; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+.header h1 { font-size: 1.8rem; font-weight: 300; }
+.logout-btn { padding: 10px 24px; background: #2a2a30; border: 1px solid #3a3a40; color: #e8e8e8; border-radius: 4px; cursor: pointer; transition: background 0.3s; }
+.logout-btn:hover { background: #3a3a40; }
+
+.add-section { background: #1a1a1f; padding: 32px; border-radius: 8px; margin-bottom: 40px; border: 1px solid #2a2a30; }
+.add-section h2 { font-size: 1.2rem; font-weight: 400; margin-bottom: 24px; }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 10px; font-size: 0.9rem; color: #999; }
+.form-group input, .form-group select { width: 100%; padding: 12px; background: #111; border: 1px solid #2a2a30; color: #e8e8e8; border-radius: 4px; font-size: 0.95rem; }
+.btn { padding: 12px 28px; background: #f0c040; color: #0a0a0a; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; transition: background 0.3s; }
+.btn:hover { background: #f5d060; }
+
+.works-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  grid-auto-rows: 200px;
+  grid-auto-flow: dense;
+  position: relative;
+}
+.work-card {
+  background: #1a1a1f;
+  border: 1px solid #2a2a30;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+  contain: layout style paint;
+  height: 100%;
+}
+.work-card.portrait { grid-row: span 4; }
+.work-card.landscape { grid-row: span 2; }
+.work-card.square { grid-row: span 2; }
+.work-card .video-container {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+.work-card video, .work-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.work-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.8) 0%, transparent 50%);
+  opacity: 0; transition: opacity .3s;
+  display: flex; flex-direction: column;
+  justify-content: flex-end; padding: 20px;
+  pointer-events: none;
+}
+.work-card:hover .work-overlay { opacity: 1; }
+.work-title { font-size: .9rem; color: #e8e8e8; margin-bottom: 4px; }
+.work-meta { font-size: .75rem; color: #f0c040; letter-spacing: 1px; }
+.work-play {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px; height: 48px;
+  border: 2px solid rgba(255,255,255,.8);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .3s;
+  pointer-events: none;
+}
+.work-play::after {
+  content: ''; border-left: 14px solid white;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  margin-left: 4px;
+}
+.work-card.is-video:hover .work-play { opacity: 1; }
+.work-info { padding: 16px; position: relative; z-index: 10; background: #1a1a1f; }
+.work-info h3 { font-size: 0.9rem; margin-bottom: 6px; font-weight: 400; }
+.work-info p { font-size: 0.8rem; color: #999; }
+.work-actions { display: flex; gap: 10px; margin-top: 14px; }
+.work-actions button { flex: 1; padding: 8px; font-size: 0.85rem; background: #2a2a30; border: 1px solid #3a3a40; color: #e8e8e8; border-radius: 4px; cursor: pointer; transition: background 0.3s; }
+.work-actions button:hover { background: #3a3a40; }
+.work-actions .delete { background: #441111; border-color: #661111; }
+.work-actions .delete:hover { background: #661111; }
+
+.drag-handle {
+  cursor: move;
+  padding: 8px;
+  text-align: center;
+  background: #111;
+  color: #666;
+  font-size: 0.8rem;
+  user-select: none;
+  flex-shrink: 0;
+  z-index: 10;
+  position: relative;
+}
+.dragging { opacity: 0.5; transform: scale(0.95); }
+.drag-over { border: 2px dashed #f0c040 !important; background: rgba(240,192,64,0.1); }
+
+/* 编辑面板 */
+.edit-panel {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1a1a1f;
+  border: 1px solid #2a2a30;
+  border-radius: 8px;
+  padding: 24px;
+  z-index: 10000;
+  min-width: 300px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.edit-panel.open { display: block; }
+.edit-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 9999;
+}
+.edit-overlay.open { display: block; }
+.edit-panel h3 { margin-bottom: 20px; font-weight: 400; }
+.edit-panel .form-group { margin-bottom: 16px; }
+.edit-panel .form-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #999; }
+.edit-panel .btn-group { display: flex; gap: 12px; margin-top: 20px; }
+.edit-panel .btn-group button { flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- 登录页 -->
+<div class="login-page" id="loginPage">
+  <div class="login-box">
+    <h1>作品管理后台</h1>
+    <input type="password" id="password" placeholder="请输入密码" />
+    <div class="error" id="error"></div>
+    <button onclick="login()">登录</button>
+  </div>
+</div>
+
+<!-- 管理页 -->
+<div class="admin-page" id="adminPage">
+  <div class="header">
+    <h1>作品管理</h1>
+    <div>
+      <button class="logout-btn" onclick="importExisting()" style="margin-right:12px;">导入现有作品</button>
+      <button class="logout-btn" onclick="logout()">退出</button>
+    </div>
+  </div>
+
+  <div class="add-section">
+    <h2>添加新作品</h2>
+    <div class="form-group">
+      <label>作品标题</label>
+      <input type="text" id="title" placeholder="例如：新疆旅行" />
+    </div>
+    <div class="form-group">
+      <label>上传方式</label>
+      <select id="uploadMode" onchange="toggleUploadMode()">
+        <option value="url">在线链接</option>
+        <option value="file">本地上传</option>
+      </select>
+    </div>
+    <div class="form-group" id="urlGroup">
+      <label>视频/图片链接</label>
+      <input type="text" id="url" placeholder="粘贴在线链接" />
+    </div>
+    <div class="form-group" id="fileGroup" style="display:none;">
+      <label>选择文件</label>
+      <input type="file" id="fileInput" accept="video/*,image/*" onchange="handleFileUpload()" />
+      <p style="font-size:0.8rem;color:#666;margin-top:8px;">文件将转为Base64存储</p>
+    </div>
+    <div class="form-group">
+      <label>类型</label>
+      <select id="type">
+        <option value="video">视频</option>
+        <option value="photo">图片</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>年份</label>
+      <input type="text" id="year" placeholder="2025" value="2025" />
+    </div>
+    <button class="btn" onclick="addWork()">添加作品</button>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <h2 style="font-weight:400;">作品管理（拖拽排序）</h2>
+    <div style="display:flex;gap:12px;align-items:center;">
+      <label style="font-size:0.9rem;color:#999;">间距:</label>
+      <input type="range" id="gapSlider" min="8" max="32" value="20" style="width:100px;" oninput="updateGap(this.value)">
+      <span id="gapValue" style="font-size:0.9rem;color:#f0c040;min-width:40px;">20px</span>
+      <button class="logout-btn" onclick="toggleSelectMode()" id="selectBtn">批量选择</button>
+      <button class="logout-btn" onclick="deleteSelected()" id="deleteSelectedBtn" style="display:none;background:#441111;border-color:#661111;">删除选中</button>
+      <button class="logout-btn" onclick="clearAll()" style="background:#441111;border-color:#661111;">一键清空</button>
+    </div>
+  </div>
+  <div class="works-list" id="worksList"></div>
+
+  <button class="btn" onclick="saveToFile()" style="margin-top: 32px; width: 100%;">导出HTML代码（备用）</button>
+  <button class="btn" onclick="autoUpdate()" style="margin-top: 12px; width: 100%; background:#4a9eff;">💾 保存并同步到主页</button>
+  <button class="btn" onclick="exportBackup()" style="margin-top: 12px; width: 100%; background:#2a9d8f;">📦 导出备份</button>
+  <button class="btn" onclick="document.getElementById('importFile').click()" style="margin-top: 12px; width: 100%; background:#e76f51;">📥 导入备份</button>
+  <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importBackup(this)">
+</div>
+
+<!-- 编辑面板 -->
+<div class="edit-overlay" id="editOverlay" onclick="closeEditPanel()"></div>
+<div class="edit-panel" id="editPanel">
+  <h3>编辑作品</h3>
+  <div class="form-group">
+    <label>标题</label>
+    <input type="text" id="editTitle" />
+  </div>
+  <div class="form-group">
+    <label>年份</label>
+    <input type="text" id="editYear" />
+  </div>
+  <div class="form-group">
+    <label>占位大小</label>
+    <select id="editSpan">
+      <option value="1">标准（1列）</option>
+      <option value="2">加宽（2列）</option>
+      <option value="3">超宽（3列）</option>
+      <option value="4">全宽（4列）</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>容器比例</label>
+    <select id="editRatio" onchange="toggleCustomRatio()">
+      <option value="auto">自动检测</option>
+      <option value="9/16">竖屏 9:16</option>
+      <option value="16/9">横屏 16:9</option>
+      <option value="1/1">方形 1:1</option>
+      <option value="custom">自定义</option>
+    </select>
+  </div>
+  <div class="form-group" id="customRatioGroup" style="display:none;">
+    <label>自定义比例 (宽:高)</label>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="number" id="customWidth" placeholder="宽" min="1" style="flex:1;" />
+      <span>:</span>
+      <input type="number" id="customHeight" placeholder="高" min="1" style="flex:1;" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>视觉缩放: <span id="editScaleValue">100%</span></label>
+    <input type="range" id="editScale" min="0.5" max="2" step="0.1" value="1" oninput="updateEditScale(this.value)" style="width:100%;" />
+    <p style="font-size:0.75rem;color:#666;margin-top:4px;">不影响布局，仅视觉放大缩小</p>
+  </div>
+  <div class="btn-group">
+    <button class="btn" onclick="saveEdit()">保存</button>
+    <button class="logout-btn" onclick="closeEditPanel()">取消</button>
+  </div>
+</div>
+
+<script>
+const PASSWORD = 'soda567'; // 修改为你的密码
+let works = [];
+let uploadedFileData = null;
+let selectMode = false;
+let selectedIds = new Set();
+let previewMode = false;
+let editingWorkId = null;
+
+function openEditPanel(id) {
+  if (selectMode) return;
+  editingWorkId = id;
+  const work = works.find(w => w.id === id);
+  if (!work) return;
+
+  document.getElementById('editTitle').value = work.title;
+  document.getElementById('editYear').value = work.year;
+  document.getElementById('editSpan').value = work.span || 1;
+  document.getElementById('editScale').value = work.scale || 1;
+  document.getElementById('editScaleValue').textContent = Math.round((work.scale || 1) * 100) + '%';
+
+  document.getElementById('editRatio').value = work.ratio || 'auto';
+  if (work.ratio === 'custom' && work.customRatio) {
+    document.getElementById('customWidth').value = work.customRatio.width;
+    document.getElementById('customHeight').value = work.customRatio.height;
+  }
+  toggleCustomRatio();
+
+  document.getElementById('editOverlay').classList.add('open');
+  document.getElementById('editPanel').classList.add('open');
+}
+
+function closeEditPanel() {
+  editingWorkId = null;
+  document.getElementById('editOverlay').classList.remove('open');
+  document.getElementById('editPanel').classList.remove('open');
+}
+
+function updateEditScale(value) {
+  document.getElementById('editScaleValue').textContent = Math.round(value * 100) + '%';
+}
+
+function toggleCustomRatio() {
+  const ratio = document.getElementById('editRatio').value;
+  document.getElementById('customRatioGroup').style.display = ratio === 'custom' ? 'block' : 'none';
+}
+
+function saveEdit() {
+  if (!editingWorkId) return;
+  const work = works.find(w => w.id === editingWorkId);
+  if (!work) return;
+
+  work.title = document.getElementById('editTitle').value;
+  work.year = document.getElementById('editYear').value;
+  work.span = parseInt(document.getElementById('editSpan').value);
+  work.scale = parseFloat(document.getElementById('editScale').value);
+
+  const ratio = document.getElementById('editRatio').value;
+  work.ratio = ratio;
+  if (ratio === 'custom') {
+    work.customRatio = {
+      width: parseInt(document.getElementById('customWidth').value) || 16,
+      height: parseInt(document.getElementById('customHeight').value) || 9
+    };
+  }
+
+  localStorage.setItem('soda_works', JSON.stringify(works));
+  closeEditPanel();
+  renderWorks();
+}
+
+function updateGap(value) {
+  document.getElementById('gapValue').textContent = value + 'px';
+  document.getElementById('worksList').style.gap = value + 'px';
+}
+
+function changeWorkSpan(id, delta) {
+  const work = works.find(w => w.id === id);
+  if (!work) return;
+
+  const newSpan = Math.max(1, Math.min(4, (work.span || 1) + delta));
+  work.span = newSpan;
+
+  document.getElementById('span-' + id).textContent = newSpan + '列';
+  const card = document.getElementById('card-' + id);
+  if (card) card.style.gridColumn = newSpan > 1 ? 'span ' + newSpan : 'span 1';
+
+  localStorage.setItem('soda_works', JSON.stringify(works));
+}
+
+function toggleUploadMode() {
+  const mode = document.getElementById('uploadMode').value;
+  document.getElementById('urlGroup').style.display = mode === 'url' ? 'block' : 'none';
+  document.getElementById('fileGroup').style.display = mode === 'file' ? 'block' : 'none';
+}
+
+function handleFileUpload() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    uploadedFileData = e.target.result;
+    const type = file.type.startsWith('video') ? 'video' : 'photo';
+    document.getElementById('type').value = type;
+  };
+  reader.readAsDataURL(file);
+}
+
+function login() {
+  const pwd = document.getElementById('password').value;
+  if (pwd === PASSWORD) {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('adminPage').style.display = 'block';
+    loadWorks();
+  } else {
+    document.getElementById('error').textContent = '密码错误';
+  }
+}
+
+function logout() {
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('adminPage').style.display = 'none';
+  document.getElementById('password').value = '';
+}
+
+function importExisting() {
+  if (!confirm('导入会覆盖当前数据，确定继续吗？')) return;
+
+  const existing = [
+    {title: '新疆旅行', url: 'https://sns-video-qc.xhscdn.com/stream/1/110/115/01e89e041cb8633d0103700198a941aaf0_115.mp4?sign=bd56ad3f85813322309136ee51602c7b&t=69ac3ac3', type: 'video', year: '2025'},
+    {title: '洛丽塔', url: 'https://sns-video-qc.xhscdn.com/pre_post/01e273c07d229c13010370038094283ae6_259.mp4?sign=548af5c4b2f6aa7b557e9fef35ebe9ea&t=69ac3d08', type: 'video', year: '2025'},
+    {title: '城市光影', url: 'https://sns-video-hw.xhscdn.com/stream/1/110/84/01e7a3255907167c0103700194d54ab803_84.mp4', type: 'video', year: '2025'},
+    {title: '上海City', url: 'https://sns-video-qc.xhscdn.com/8fe0627f75bd673f7c03ab97a9fd79e92b7d4118_v1?sign=e39527512885563733c635cb0ae60f22&t=69ac3ea3', type: 'video', year: '2025'},
+    {title: '山顶的风', url: 'https://sns-video-qc.xhscdn.com/stream/110/4/01e66133cd7c413b010377038febb2af03_4.mp4?sign=45172c1a854ab86198055c4abd19febf&t=69ac3b9e', type: 'video', year: '2025'},
+    {title: '喜欢和你虚度时光的日子', url: 'https://sns-video-qc.xhscdn.com/d6835f71d2cfedba07cf66ef2606bab5d6f0601e_v1?sign=f9aa23e391a70d45353f7b0b1d56f0dd&t=69ac3ecf', type: 'video', year: '2025'},
+    {title: '特克斯河', url: 'https://sns-video-qc.xhscdn.com/stream/110/4/01e65d5b64492f21010370038fdcad4271_4.mp4?sign=9727db50dde0be616da8d376d3263e5a&t=69ac3bd4', type: 'video', year: '2025'},
+    {title: '浪漫的开始', url: 'https://sns-video-qc.xhscdn.com/3b224e85a780333dd4e6b6d41fe7bd345e984db9_r_ln?sign=5627d2f1cce07d3e3d6e16ab3aa42b0f&t=69ac3d94', type: 'video', year: '2025'},
+    {title: '秋千', url: 'https://sns-video-qc.xhscdn.com/stream/110/4/01e65fc9f67c4180010370038fe62d1d17_4.mp4?sign=e5cddb63035dda62f62bed5b5b706298&t=69ac3bfb', type: 'video', year: '2025'},
+    {title: '蓝色星球', url: 'https://sns-video-qc.xhscdn.com/bcf658368b3164fa60f36cd7b48119097ad15a58_r_ln?sign=20ddc10cc44dcc6abb3e32da9ac294f2&t=69ac3e79', type: 'video', year: '2025'},
+    {title: '村落', url: 'https://sns-video-qc.xhscdn.com/stream/110/4/01e6592e79425ee2010370038fcc5ffe5b_4.mp4?sign=24ec243a492c9786228e1989ec5ac5c0&t=69ac3c53', type: 'video', year: '2025'},
+    {title: '北戴河', url: 'https://sns-video-qc.xhscdn.com/stream/110/4/01e5a0c3fc4f3ccf010370038cfc0226d4_4.mp4?sign=4618dba827ed6022ab6ed4087faf174b&t=69ac3c92', type: 'video', year: '2025'},
+    {title: '路边野餐', url: 'https://sns-video-qc.xhscdn.com/stream/110/259/01e549db56b53098010370038ba8812c0c_259.mp4?sign=2d361f8d10c5ece85d9abc4eef3abbc3&t=69ac3cd2', type: 'video', year: '2025'},
+    {title: '春天旅馆', url: 'https://sns-video-qc.xhscdn.com/pre_post/01e270620122acde018370038086ff5db4_259.mp4?sign=9055b8f490ac031e16ca646952f85c77&t=69ac3d2c', type: 'video', year: '2025'},
+    {title: '一个夏天的结束', url: 'https://sns-video-qc.xhscdn.com/46d0ec45e756f9c60711e6d879ea6c6c51cd5e61_r?sign=0a096c96981997fbec12c00c8bac8ce3&t=69ac3d66', type: 'video', year: '2025'},
+    {title: '未解的波', url: 'https://sns-video-qc.xhscdn.com/37bed96c055441faedce29e66a3f3a687e9c9b7a_r?sign=8927932ad3a0c35bc9140991b5387a1c&t=69ac3de2', type: 'video', year: '2025'},
+    {title: '难免落俗', url: 'https://sns-video-qc.xhscdn.com/845908bab74dc43b2a308fbf466fbdcdded25592_v1?sign=9182ce749a7742a02155d687b4f40a58&t=69ac3e38', type: 'video', year: '2025'}
+  ];
+
+  works = existing.map((w, i) => ({...w, id: Date.now() + i, span: 1, scale: 1}));
+  localStorage.setItem('soda_works', JSON.stringify(works));
+  renderWorks();
+  alert('已导入17个现有作品！所有作品已重置为默认设置（1列，100%缩放）');
+}
+
+function loadWorks() {
+  const saved = localStorage.getItem('soda_works');
+  if (saved) {
+    works = JSON.parse(saved);
+  }
+  saveHistory();
+  renderWorks();
+}
+
+function addWork() {
+  const title = document.getElementById('title').value;
+  const mode = document.getElementById('uploadMode').value;
+  const type = document.getElementById('type').value;
+  const year = document.getElementById('year').value;
+
+  let url;
+  if (mode === 'url') {
+    url = document.getElementById('url').value;
+  } else {
+    url = uploadedFileData;
+  }
+
+  if (!title || !url) {
+    alert('请填写标题并上传文件或输入链接');
+    return;
+  }
+
+  works.push({ title, url, type, year, id: Date.now(), span: 1, scale: 1 });
+  saveHistory();
+  localStorage.setItem('soda_works', JSON.stringify(works));
+
+  document.getElementById('title').value = '';
+  document.getElementById('url').value = '';
+  document.getElementById('fileInput').value = '';
+  uploadedFileData = null;
+
+  renderWorks();
+}
+
+function deleteWork(id) {
+  if (!confirm('确定删除这个作品吗？')) return;
+  saveHistory();
+  works = works.filter(w => w.id !== id);
+  localStorage.setItem('soda_works', JSON.stringify(works));
+  renderWorks();
+}
+
+function toggleSelectMode() {
+  selectMode = !selectMode;
+  selectedIds.clear();
+  document.getElementById('selectBtn').textContent = selectMode ? '取消选择' : '批量选择';
+  document.getElementById('deleteSelectedBtn').style.display = selectMode ? 'inline-block' : 'none';
+  renderWorks();
+}
+
+function toggleSelect(id) {
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+  } else {
+    selectedIds.add(id);
+  }
+  document.getElementById(`card-${id}`).style.border = selectedIds.has(id) ? '2px solid #f0c040' : '1px solid #2a2a30';
+}
+
+function deleteSelected() {
+  if (selectedIds.size === 0) {
+    alert('请先选择要删除的作品');
+    return;
+  }
+  if (!confirm(`确定删除选中的 ${selectedIds.size} 个作品吗？`)) return;
+  works = works.filter(w => !selectedIds.has(w.id));
+  localStorage.setItem('soda_works', JSON.stringify(works));
+  selectedIds.clear();
+  selectMode = false;
+  document.getElementById('selectBtn').textContent = '批量选择';
+  document.getElementById('deleteSelectedBtn').style.display = 'none';
+  renderWorks();
+}
+
+function clearAll() {
+  if (!confirm('确定清空所有作品吗？此操作不可恢复！')) return;
+  works = [];
+  localStorage.setItem('soda_works', JSON.stringify(works));
+  renderWorks();
+}
+
+function renderWorks() {
+  const list = document.getElementById('worksList');
+  list.innerHTML = works.map((w, i) => {
+    let containerStyle = '';
+    if (w.ratio && w.ratio !== 'auto') {
+      const ar = w.ratio === 'custom' ? `${w.customRatio.width}/${w.customRatio.height}` : w.ratio;
+      containerStyle = `aspect-ratio:${ar};`;
+    }
+
+    // 计算实际占用的列数和行数
+    let actualSpan = w.span || 1;
+    let gridStyle = actualSpan > 1 ? `grid-column:span ${actualSpan};grid-row:span ${actualSpan};` : '';
+
+    return `
+    <div class="work-card ${w.type === 'video' ? 'is-video' : ''}"
+         id="card-${w.id}"
+         data-id="${w.id}"
+         data-index="${i}"
+         ${selectMode ? `onclick="toggleSelect(${w.id})"` : ''}
+         style="cursor:${selectMode ? 'pointer' : 'default'};${gridStyle}">
+      <div class="drag-handle" draggable="${!selectMode}" style="cursor:move;">${selectMode ? '☐' : '⋮⋮'}</div>
+      <div class="video-container" id="container-${w.id}" style="${containerStyle}">
+        ${w.type === 'video' ?
+          `<video src="${w.url}" muted id="video-${w.id}"></video>` :
+          `<img src="${w.url}" alt="${w.title}" id="img-${w.id}" />`
+        }
+        <div class="work-overlay">
+          <div class="work-title">${w.title}</div>
+          <div class="work-meta">${w.type === 'video' ? 'VIDEO' : 'PHOTO'} · ${w.year}</div>
+        </div>
+        ${w.type === 'video' ? '<div class="work-play"></div>' : ''}
+      </div>
+      <div class="work-info">
+        <p id="ratio-${w.id}" style="font-size:0.75rem;color:#f0c040;margin-top:4px;">检测中...</p>
+        ${!selectMode ? `
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+          <button onclick="event.stopPropagation();changeWorkSpan(${w.id}, -1)" style="flex:1;padding:6px;background:#2a2a30;border:1px solid #3a3a40;color:#e8e8e8;border-radius:4px;cursor:pointer;">缩小</button>
+          <span id="span-${w.id}" style="font-size:0.75rem;color:#f0c040;min-width:40px;text-align:center;">${w.span || 1}列</span>
+          <button onclick="event.stopPropagation();changeWorkSpan(${w.id}, 1)" style="flex:1;padding:6px;background:#2a2a30;border:1px solid #3a3a40;color:#e8e8e8;border-radius:4px;cursor:pointer;">放大</button>
+        </div>
+        <div class="work-actions">
+          <button onclick="event.stopPropagation();openEditPanel(${w.id})">编辑</button>
+          <button onclick="event.stopPropagation();deleteWork(${w.id})">删除</button>
+        </div>` : ''}
+      </div>
+    </div>
+  `;
+  }).join('');
+
+  if (!selectMode) setupDragDrop();
+  detectRatios();
+}
+
+function detectRatios() {
+  works.forEach(w => {
+    const el = document.getElementById(w.type === 'video' ? `video-${w.id}` : `img-${w.id}`);
+    if (!el) return;
+
+    if (w.type === 'video') {
+      el.addEventListener('loadedmetadata', () => {
+        const card = document.getElementById(`card-${w.id}`);
+        const ratio = el.videoWidth / el.videoHeight;
+
+        if (ratio > 1.2) {
+          card.classList.add('landscape');
+          card.classList.remove('portrait', 'square');
+          // 横屏默认占2列
+          if (!w.span || w.span === 1) {
+            w.span = 2;
+            card.style.gridColumn = 'span 2';
+          }
+        } else if (ratio < 0.8) {
+          card.classList.add('portrait');
+          card.classList.remove('landscape', 'square');
+        } else {
+          card.classList.add('square');
+          card.classList.remove('landscape', 'portrait');
+        }
+
+        const ratioText = ratio > 1.2 ? '横屏 16:9' : ratio < 0.8 ? '竖屏 9:16' : '方形 1:1';
+        document.getElementById(`ratio-${w.id}`).textContent = `${el.videoWidth}×${el.videoHeight} (${ratioText})`;
+      });
+      el.load();
+    } else {
+      el.addEventListener('load', () => {
+        const ratio = el.naturalWidth / el.naturalHeight;
+        const card = document.getElementById(`card-${w.id}`);
+
+        if (ratio > 1.2) {
+          card.classList.add('landscape');
+          card.classList.remove('portrait', 'square');
+          // 横屏默认占2列
+          if (!w.span || w.span === 1) {
+            w.span = 2;
+            card.style.gridColumn = 'span 2';
+          }
+        } else if (ratio < 0.8) {
+          card.classList.add('portrait');
+          card.classList.remove('landscape', 'square');
+        } else {
+          card.classList.add('square');
+          card.classList.remove('landscape', 'portrait');
+        }
+
+        const ratioText = ratio > 1.2 ? '横屏' : ratio < 0.8 ? '竖屏' : '方形';
+        document.getElementById(`ratio-${w.id}`).textContent = `${el.naturalWidth}×${el.naturalHeight} (${ratioText})`;
+      });
+    }
+  });
+}
+
+function setupDragDrop() {
+  const handles = document.querySelectorAll('.drag-handle');
+  let draggedCard;
+  let draggedIndex;
+
+  handles.forEach((handle, index) => {
+    handle.addEventListener('dragstart', (e) => {
+      draggedCard = handle.closest('.work-card');
+      draggedIndex = index;
+      draggedCard.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    handle.addEventListener('dragend', () => {
+      if (draggedCard) {
+        draggedCard.classList.remove('dragging');
+        document.querySelectorAll('.work-card').forEach(c => c.classList.remove('drag-over'));
+      }
+    });
+  });
+
+  const cards = document.querySelectorAll('.work-card');
+  cards.forEach((card, index) => {
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      card.classList.add('drag-over');
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      const dropIndex = index;
+      if (draggedIndex !== undefined && draggedIndex !== dropIndex) {
+        // 交换位置
+        [works[draggedIndex], works[dropIndex]] = [works[dropIndex], works[draggedIndex]];
+        saveHistory();
+        localStorage.setItem('soda_works', JSON.stringify(works));
+        renderWorks();
+      }
+    });
+  });
+}
+
+function saveToFile() {
+  const html = works.map(w => `
+    <div class="work-item ${w.type === 'video' ? 'is-video' : ''}" data-type="${w.type}" data-src="${w.url}" ${w.span === 2 ? 'style="grid-column:span 2;"' : ''}>
+      ${w.type === 'video' ?
+        `<video src="${w.url}" muted loop playsinline style="pointer-events:none"></video>` :
+        `<img src="${w.url}" alt="${w.title}" loading="lazy">`
+      }
+      <div class="work-overlay">
+        <div class="work-title">${w.title}</div>
+        <div class="work-meta">${w.type === 'video' ? 'VIDEO' : 'PHOTO'} · ${w.year}</div>
+      </div>
+      ${w.type === 'video' ? '<div class="work-play"></div>' : ''}
+    </div>`).join('\n    ');
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'works-output.html';
+  a.click();
+
+  alert('已导出HTML代码！请将文件放到项目文件夹，然后让AI帮你替换');
+}
+
+function autoUpdate() {
+  localStorage.setItem('soda_works', JSON.stringify(works));
+  alert('✅ 作品已保存到 localStorage！\n\n刷新主页 (index.html) 即可看到最新作品。\n\n提示：主页会自动从 localStorage 读取作品数据。');
+}
+
+// 键盘快捷键
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Delete' && selectedIds.size > 0) {
+    deleteSelected();
+  }
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'a') {
+      e.preventDefault();
+      if (!selectMode) toggleSelectMode();
+      works.forEach(w => selectedIds.add(w.id));
+      renderWorks();
+    }
+    if (e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+    }
+    if (e.key === 'z' && e.shiftKey || e.key === 'y') {
+      e.preventDefault();
+      redo();
+    }
+  }
+});
+
+// 撤销重做
+let history = [];
+let historyIndex = -1;
+
+function saveHistory() {
+  history = history.slice(0, historyIndex + 1);
+  history.push(JSON.stringify(works));
+  historyIndex++;
+  if (history.length > 50) {
+    history.shift();
+    historyIndex--;
+  }
+}
+
+function undo() {
+  if (historyIndex > 0) {
+    historyIndex--;
+    works = JSON.parse(history[historyIndex]);
+    localStorage.setItem('soda_works', JSON.stringify(works));
+    renderWorks();
+  }
+}
+
+function redo() {
+  if (historyIndex < history.length - 1) {
+    historyIndex++;
+    works = JSON.parse(history[historyIndex]);
+    localStorage.setItem('soda_works', JSON.stringify(works));
+    renderWorks();
+  }
+}
+
+function exportBackup() {
+  const backup = {
+    version: '1.0',
+    date: new Date().toISOString(),
+    works: works
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `soda567-backup-${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  alert('✅ 备份已导出！');
+}
+
+function importBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if (!backup.works || !Array.isArray(backup.works)) {
+        alert('❌ 备份文件格式错误！');
+        return;
+      }
+      if (!confirm(`确定导入备份吗？\n\n备份日期: ${backup.date}\n作品数量: ${backup.works.length}\n\n当前数据将被覆盖！`)) return;
+
+      works = backup.works;
+      saveHistory();
+      localStorage.setItem('soda_works', JSON.stringify(works));
+      renderWorks();
+      alert('✅ 备份已导入！');
+    } catch (err) {
+      alert('❌ 导入失败：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+</script>
+</body>
+</html>
