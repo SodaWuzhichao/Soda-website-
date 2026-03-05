@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视频/音频转文案 | SODA567</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0a0a; --surface: #141414; --gold: #ffd700;
+  --text: #e8e8e8; --muted: #666; --border: #222;
+}
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-weight: 200; min-height: 100vh; }
+
+nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 24px 48px; border-bottom: 1px solid var(--border);
+}
+.logo { font-size: 1.2rem; color: var(--text); font-weight: 300; text-decoration: none; letter-spacing: 1px; }
+.nav-back { color: var(--muted); text-decoration: none; font-size: .8rem; letter-spacing: 1.5px; text-transform: uppercase; transition: color .3s; }
+.nav-back:hover { color: var(--gold); }
+
+.container { max-width: 800px; margin: 0 auto; padding: 80px 48px; }
+.page-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 200; letter-spacing: -2px; margin-bottom: 16px; }
+.page-desc { color: var(--muted); font-size: .95rem; margin-bottom: 48px; }
+
+.upload-area {
+  background: var(--surface); border: 2px dashed var(--border);
+  border-radius: 8px; padding: 60px 40px; text-align: center;
+  cursor: pointer; transition: all .3s;
+}
+.upload-area:hover { border-color: var(--gold); }
+.upload-area.dragover { border-color: var(--gold); background: rgba(255,215,0,0.05); }
+.upload-icon { font-size: 3rem; margin-bottom: 16px; }
+.upload-text { font-size: 1.1rem; margin-bottom: 8px; }
+.upload-hint { font-size: .85rem; color: var(--muted); }
+
+.result-area { display: none; margin-top: 40px; }
+.result-title { font-size: 1.2rem; margin-bottom: 16px; font-weight: 300; }
+.result-text {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 24px; line-height: 1.8;
+  min-height: 200px; white-space: pre-wrap;
+}
+.btn { padding: 12px 28px; background: var(--gold); color: var(--bg); border: none; border-radius: 4px; cursor: pointer; font-weight: 500; transition: background .3s; margin-top: 16px; }
+.btn:hover { background: #f5d060; }
+
+.loading { display: none; text-align: center; margin-top: 40px; }
+.loading-spinner { border: 3px solid var(--border); border-top: 3px solid var(--gold); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.error { display: none; background: #441111; border: 1px solid #661111; border-radius: 8px; padding: 16px; margin-top: 24px; color: #ff6666; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="logo">SODA567</a>
+  <a href="../index.html" class="nav-back">← 返回主页</a>
+</nav>
+
+<div class="container">
+  <h1 class="page-title">视频/音频转文案</h1>
+  <p class="page-desc">上传视频或音频文件，自动提取文案内容</p>
+
+  <div class="upload-area" id="uploadArea">
+    <div class="upload-icon">🎬</div>
+    <div class="upload-text">点击或拖拽文件到这里</div>
+    <div class="upload-hint">支持 MP4, MP3, WAV, M4A 等格式</div>
+    <input type="file" id="fileInput" accept="video/*,audio/*" style="display:none;">
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="loading-spinner"></div>
+    <div>正在处理中，请稍候...</div>
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <div class="result-area" id="resultArea">
+    <div class="result-title">提取结果</div>
+    <div class="result-text" id="resultText"></div>
+    <button class="btn" onclick="copyText()">复制文案</button>
+    <button class="btn" onclick="reset()" style="background:#2a2a30;margin-left:12px;">重新上传</button>
+  </div>
+</div>
+
+<script>
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const loading = document.getElementById('loading');
+const error = document.getElementById('error');
+const resultArea = document.getElementById('resultArea');
+const resultText = document.getElementById('resultText');
+
+// 后端服务地址
+const API_URL = 'http://localhost:5000/api/transcribe';
+
+uploadArea.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', handleFile);
+
+// 拖拽上传
+uploadArea.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadArea.classList.add('dragover');
+});
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+  if (e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
+    handleFile();
+  }
+});
+
+async function handleFile() {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  // 隐藏上传区域，显示加载
+  uploadArea.style.display = 'none';
+  loading.style.display = 'block';
+  error.style.display = 'none';
+  resultArea.style.display = 'none';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) throw new Error('处理失败');
+
+    const data = await response.json();
+
+    loading.style.display = 'none';
+    resultArea.style.display = 'block';
+    resultText.textContent = data.text;
+
+  } catch (err) {
+    loading.style.display = 'none';
+    error.style.display = 'block';
+    error.textContent = '❌ 处理失败：' + err.message + '\n\n请确保后端服务已启动（运行 start.bat）';
+    uploadArea.style.display = 'block';
+  }
+}
+
+function copyText() {
+  navigator.clipboard.writeText(resultText.textContent);
+  alert('✅ 文案已复制到剪贴板！');
+}
+
+function reset() {
+  uploadArea.style.display = 'block';
+  resultArea.style.display = 'none';
+  fileInput.value = '';
+}
+</script>
+
+</body>
+</html>
