@@ -193,6 +193,12 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #0a0a0a; c
       <input type="file" id="fileInput" accept="video/*,image/*" onchange="handleFileUpload()" />
       <p style="font-size:0.8rem;color:#666;margin-top:8px;">文件将转为Base64存储</p>
     </div>
+    <div class="form-group" id="posterGroup" style="display:none;">
+      <label>视频封面（可选）</label>
+      <input type="file" id="posterInput" accept="image/*" onchange="handlePosterUpload()" />
+      <p style="font-size:0.8rem;color:#666;margin-top:8px;">不上传则自动提取视频第一帧</p>
+      <canvas id="posterCanvas" style="display:none;"></canvas>
+    </div>
     <div class="form-group">
       <label>类型</label>
       <select id="type">
@@ -371,6 +377,39 @@ function toggleUploadMode() {
   const mode = document.getElementById('uploadMode').value;
   document.getElementById('urlGroup').style.display = mode === 'url' ? 'block' : 'none';
   document.getElementById('fileGroup').style.display = mode === 'file' ? 'block' : 'none';
+  document.getElementById('posterGroup').style.display = mode === 'file' ? 'block' : 'none';
+}
+
+let uploadedPosterData = null;
+
+function handlePosterUpload() {
+  const file = document.getElementById('posterInput').files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    uploadedPosterData = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function extractVideoPoster(videoFile, callback) {
+  const video = document.createElement('video');
+  const canvas = document.getElementById('posterCanvas');
+  const ctx = canvas.getContext('2d');
+
+  video.onloadeddata = () => {
+    video.currentTime = 0.1;
+  };
+
+  video.onseeked = () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    callback(canvas.toDataURL('image/jpeg', 0.8));
+  };
+
+  video.src = URL.createObjectURL(videoFile);
 }
 
 function handleFileUpload() {
@@ -382,6 +421,14 @@ function handleFileUpload() {
     uploadedFileData = e.target.result;
     const type = file.type.startsWith('video') ? 'video' : 'photo';
     document.getElementById('type').value = type;
+
+    // 如果是视频且没有手动上传封面，自动提取第一帧
+    if (type === 'video' && !uploadedPosterData) {
+      extractVideoPoster(file, (posterData) => {
+        uploadedPosterData = posterData;
+        alert('✅ 已自动提取视频封面');
+      });
+    }
   };
   reader.readAsDataURL(file);
 }
@@ -459,14 +506,16 @@ function addWork() {
     return;
   }
 
-  works.push({ title, url, type, year, id: Date.now(), span: 1, scale: 1 });
+  works.push({ title, url, type, year, id: Date.now(), span: 1, scale: 1, poster: uploadedPosterData });
   saveHistory();
   localStorage.setItem('soda_works', JSON.stringify(works));
 
   document.getElementById('title').value = '';
   document.getElementById('url').value = '';
   document.getElementById('fileInput').value = '';
+  document.getElementById('posterInput').value = '';
   uploadedFileData = null;
+  uploadedPosterData = null;
 
   renderWorks();
 }
