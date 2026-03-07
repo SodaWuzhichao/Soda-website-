@@ -141,7 +141,7 @@ async function handleFile() {
 
     loading.style.display = 'none';
     resultArea.style.display = 'block';
-    resultText.textContent = formatText(data.text);
+    resultText.textContent = formatTextWithSegments(data.segments);
     document.getElementById('wordCount').textContent = `共 ${resultText.textContent.length} 字`;
 
   } catch (err) {
@@ -150,6 +150,34 @@ async function handleFile() {
     error.textContent = '❌ 处理失败：' + err.message + '\n\n请确保后端服务已启动（运行 start.bat）';
     uploadArea.style.display = 'block';
   }
+}
+
+function formatTextWithSegments(segments) {
+  if (!segments || segments.length === 0) return '';
+
+  let result = '';
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const nextSeg = segments[i + 1];
+    const text = seg.text.trim();
+
+    if (!text) continue;
+
+    result += text;
+
+    if (nextSeg) {
+      const pause = nextSeg.start - seg.end;
+      if (pause > 1.5) {
+        result += '。\n';
+      } else if (pause > 0.8) {
+        result += '，';
+      }
+    } else {
+      result += '。';
+    }
+  }
+
+  return result.trim();
 }
 
 function formatText(text) {
