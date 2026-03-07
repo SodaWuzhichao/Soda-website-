@@ -687,7 +687,7 @@ function loadWorksFromStorage() {
     }
     return `
     <div class="work-item is-video" data-type="${w.type}" data-src="${w.url}" data-ratio="${w.ratio || 'auto'}" style="${style}">
-      <video src="${w.url}" muted loop playsinline></video>
+      <video src="${w.url}" muted loop playsinline preload="metadata"></video>
       <div class="work-overlay">
         <div class="work-title">${w.title}</div>
         <div class="work-meta">${w.type === 'video' ? 'VIDEO' : 'PHOTO'} · ${w.year}</div>
