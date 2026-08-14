@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>安装插件 | SODA LiveGrabber</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0a0a; --surface: #141414; --surface-soft: rgba(255,255,255,0.03);
+  --gold: #ffd700; --text: #e8e8e8; --muted: #666; --border: #222;
+  --success: #5ad060; --danger: #ff6b6b; --info: #7ec8ff;
+}
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-weight: 200; min-height: 100vh; }
+
+/* ── Nav ── */
+nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 24px 48px; border-bottom: 1px solid var(--border);
+}
+.logo { font-size: 1.2rem; color: var(--text); font-weight: 300; text-decoration: none; letter-spacing: 1px; }
+.nav-back {
+  padding: 10px 20px; border-radius: 6px; text-decoration: none;
+  font-size: 0.85rem; font-weight: 300; letter-spacing: 1px;
+  transition: all 0.3s; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.2); color: var(--text);
+}
+.nav-back:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── Hero ── */
+.hero {
+  padding: 80px 48px 60px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,215,0,0.06), transparent 60%);
+}
+.hero-icon { font-size: 3rem; margin-bottom: 20px; display: block; }
+.hero h1 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 200; letter-spacing: -2px; margin-bottom: 16px; }
+.hero p { color: var(--muted); font-size: 1rem; max-width: 520px; margin: 0 auto; line-height: 1.7; }
+
+/* ── Container ── */
+.container { max-width: 780px; margin: 0 auto; padding: 60px 48px 96px; }
+
+/* ── Section ── */
+.section { margin-bottom: 56px; }
+.section-label {
+  font-size: 0.72rem; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 20px;
+}
+.section-title { font-size: 1.4rem; font-weight: 300; letter-spacing: -0.5px; margin-bottom: 24px; }
+
+/* ── Steps ── */
+.steps { display: flex; flex-direction: column; gap: 16px; }
+.step {
+  display: flex; gap: 20px; align-items: flex-start;
+  padding: 20px 24px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 12px;
+  transition: border-color 0.3s;
+}
+.step:hover { border-color: rgba(255,255,255,0.15); }
+.step-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3);
+  display: grid; place-items: center; flex-shrink: 0;
+  font-size: 0.85rem; color: var(--gold); font-weight: 400;
+}
+.step-content { flex: 1; }
+.step-title { font-size: 0.95rem; font-weight: 300; margin-bottom: 6px; }
+.step-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.7; }
+.step-desc code {
+  background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.15);
+  padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--gold);
+}
+.step-desc a { color: var(--info); text-decoration: none; }
+.step-desc a:hover { text-decoration: underline; }
+
+/* ── Browser cards ── */
+.browser-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+.browser-card {
+  padding: 20px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; cursor: pointer; transition: all 0.3s;
+}
+.browser-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+.browser-card.active { border-color: var(--gold); background: rgba(255,215,0,0.04); }
+.browser-name { font-size: 0.95rem; font-weight: 300; margin-bottom: 4px; }
+.browser-desc { font-size: 0.78rem; color: var(--muted); }
+
+/* ── File download card ── */
+.download-card {
+  padding: 24px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; margin-top: 16px;
+}
+.download-card h3 { font-size: 1rem; font-weight: 300; margin-bottom: 8px; }
+.download-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.7; margin-bottom: 16px; }
+.file-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.file-tag {
+  padding: 4px 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 6px; font-size: 0.75rem; color: var(--muted); font-family: monospace;
+}
+.download-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 24px; border-radius: 8px;
+  background: var(--gold); color: var(--bg);
+  font-size: 0.9rem; font-weight: 400; text-decoration: none;
+  transition: all 0.3s; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif;
+}
+.download-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,215,0,0.3); }
+
+/* ── Warning box ── */
+.warning {
+  padding: 16px 20px; background: rgba(255,215,0,0.04); border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 10px; font-size: 0.85rem; color: var(--muted); line-height: 1.7;
+}
+.warning strong { color: var(--gold); font-weight: 400; }
+
+/* ── FAQ ── */
+.faq-item {
+  padding: 16px 0; border-bottom: 1px solid var(--border);
+}
+.faq-item:last-child { border-bottom: none; }
+.faq-q { font-size: 0.95rem; font-weight: 300; margin-bottom: 8px; }
+.faq-a { font-size: 0.85rem; color: var(--muted); line-height: 1.7; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 12px 24px; border-radius: 8px; font-size: 0.88rem;
+  color: var(--text); z-index: 9999; transition: transform 0.3s;
+  pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  nav, .container, .hero { padding-left: 20px; padding-right: 20px; }
+  .browser-cards { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="logo" style="display:flex;align-items:center;gap:8px;text-decoration:none;line-height:1;">
+    <img src="../images/logo-icon.png" style="height:48px;width:auto;border-radius:4px;">
+    <div style="display:flex;flex-direction:column;justify-content:center;">
+      <span style="font-weight:700;font-family:'DM Sans',sans-serif;letter-spacing:-0.5px;color:#fff;font-size:1.2em;">soda</span>
+      <span style="font-weight:200;font-family:'DM Sans',sans-serif;letter-spacing:3.5px;font-size:0.65em;opacity:0.8;color:#fff;margin-top:2px;">MEDIA</span>
+    </div>
+  </a>
+  <a href="live-source.html" class="nav-back">← 直播拉流</a>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <span class="hero-icon">📡</span>
+  <h1>SODA LiveGrabber</h1>
+  <p>浏览器插件，直接在直播间页面抓取 FLV / M3U8 流地址，无需配置 Cookie，一次安装永久使用。</p>
+</div>
+
+<div class="container">
+
+  <!-- ── 为什么用插件 ── -->
+  <div class="section">
+    <div class="section-label">Why Extension</div>
+    <h2 class="section-title">为什么推荐浏览器插件？</h2>
+    <div class="warning">
+      <strong>网页版存在的问题：</strong>抖音等平台的后端 API 会进行 IP 风控，网页版请求经常被拦截返回空结果。
+      插件方案完全不同——它运行在<strong>你本地的浏览器里</strong>，使用的是你已经登录的账号会话，
+      没有任何风控问题，也不需要配置 Cookie。
+    </div>
+  </div>
+
+  <!-- ── 安装步骤 ── -->
+  <div class="section">
+    <div class="section-label">Installation</div>
+    <h2 class="section-title">安装步骤</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">下载插件文件</div>
+          <div class="step-desc">
+            点击下方按钮下载插件压缩包，解压后得到一个名为 <code>browser-extension</code> 的文件夹。
+          </div>
+          <div style="margin-top:12px;">
+            <a href="SODA-LiveGrabber.zip" download class="download-btn">⬇ 下载插件包</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">打开浏览器扩展管理页面</div>
+          <div class="step-desc">
+            根据你的浏览器，打开对应的管理页面：
+          </div>
+          <div class="browser-cards">
+            <div class="browser-card" onclick="openBrowser('chrome')">
+              <div class="browser-name">🌐 Chrome</div>
+              <div class="browser-desc">打开 chrome://extensions</div>
+            </div>
+            <div class="browser-card" onclick="openBrowser('edge')">
+              <div class="browser-name">🔵 Edge</div>
+              <div class="browser-desc">打开 edge://extensions</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">开启开发者模式</div>
+          <div class="step-desc">
+            在扩展管理页面右上角，找到「<strong>开发者模式</strong>」开关，将其打开。
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">加载已解压的扩展程序</div>
+          <div class="step-desc">
+            点击「<strong>加载已解压的扩展程序</strong>」按钮，选择你刚才解压的 <code>browser-extension</code> 文件夹，确认即可。
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <div class="step-title">开始使用</div>
+          <div class="step-desc">
+            安装成功后，浏览器工具栏会出现 <strong>📡</strong> 图标。<br>
+            打开任意直播间（抖音 / B站 / 快手），点击插件图标即可查看抓取的流地址并播放。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 插件支持的平台 ── -->
+  <div class="section">
+    <div class="section-label">Supported</div>
+    <h2 class="section-title">支持的平台</h2>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <div style="padding:10px 18px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:0.9rem;">🎵 抖音</div>
+      <div style="padding:10px 18px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:0.9rem;">📺 B站</div>
+      <div style="padding:10px 18px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:0.9rem;">⚡ 快手</div>
+    </div>
+    <div style="margin-top:12px;font-size:0.82rem;color:var(--muted);">
+      无需 Cookie，直接在你的浏览器会话中提取流地址。
+    </div>
+  </div>
+
+  <!-- ── FAQ ── -->
+  <div class="section">
+    <div class="section-label">FAQ</div>
+    <h2 class="section-title">常见问题</h2>
+
+    <div class="faq-item">
+      <div class="faq-q">Q: 插件安装后闪退或没反应怎么办？</div>
+      <div class="faq-a">
+        打开 <code>chrome://extensions</code>（或 <code>edge://extensions</code>），检查是否有红色错误提示。
+        常见原因：浏览器版本过低（需要 Chrome 88+ / Edge 88+），或开发者模式未开启。
+        也可以尝试移除后重新加载。
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Q: 插件找不到流地址？</div>
+      <div class="faq-a">
+        请确认你已在<strong>直播页面</strong>内（不是主播主页）。如果是在直播间但插件显示未检测到，
+        尝试按 F5 刷新页面，或打开 F12 开发者工具查看 Console 是否有报错信息。
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Q: 插件会收集我的数据吗？</div>
+      <div class="faq-a">
+        不会。插件完全在本地运行，只读取当前页面的网络请求来提取流地址，不上传任何数据到外部服务器。
+        Cookie 等认证信息也不会被插件读取或传输。
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Q: 安装后如何更新？</div>
+      <div class="faq-a">
+        在本页重新下载最新版本，然后在扩展管理页面点击「刷新」按钮（或移除旧版本后重新加载新版本）。
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 插件文件清单 ── -->
+  <div class="section">
+    <div class="section-label">Files</div>
+    <h2 class="section-title">插件文件清单</h2>
+    <div class="download-card">
+      <h3>browser-extension/</h3>
+      <p>以下文件打包在插件压缩包中：</p>
+      <div class="file-list">
+        <span class="file-tag">manifest.json</span>
+        <span class="file-tag">popup.html</span>
+        <span class="file-tag">popup.js</span>
+        <span class="file-tag">content.js</span>
+        <span class="file-tag">background.js</span>
+        <span class="file-tag">icon.svg</span>
+        <span class="file-tag">icon16.png</span>
+        <span class="file-tag">icon48.png</span>
+        <span class="file-tag">icon128.png</span>
+      </div>
+      <a href="SODA-LiveGrabber.zip" download class="download-btn">⬇ 下载插件包 (browser-extension.zip)</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 打开浏览器扩展页面 ──
+function openBrowser(browser) {
+  const url = browser === 'chrome'
+    ? 'chrome://extensions'
+    : 'edge://extensions';
+  window.open(url, '_blank');
+}
+</script>
+
+</body>
+</html>
