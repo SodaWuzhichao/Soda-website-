@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "SODA LiveGrabber",
+  "version": "1.0.0",
+  "description": "直播间流地址抓取工具 - SODA567",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "https://live.douyin.com/*",
+    "https://www.douyin.com/*",
+    "https://live.bilibili.com/*",
+    "https://www.bilibili.com/*",
+    "https://live.kuaishou.com/*",
+    "https://www.kuaishou.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SODA LiveGrabber"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://live.douyin.com/*",
+        "https://www.douyin.com/*",
+        "https://live.bilibili.com/*",
+        "https://live.kuaishou.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

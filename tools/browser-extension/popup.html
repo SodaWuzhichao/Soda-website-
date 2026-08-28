@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SODA LiveGrabber</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0a0a; --surface: #141414; --border: #222;
+  --gold: #ffd700; --text: #e8e8e8; --muted: #666;
+  --success: #5ad060; --danger: #ff6b6b;
+}
+body {
+  width: 420px; min-height: 300px;
+  background: var(--bg); color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-weight: 200;
+  padding: 16px;
+}
+h1 { font-size: 1rem; letter-spacing: 1px; margin-bottom: 4px; }
+.subtitle { color: var(--muted); font-size: 0.75rem; margin-bottom: 16px; }
+.status-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px;
+  margin-bottom: 16px; font-size: 0.8rem;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
+.dot.ok { background: var(--success); box-shadow: 0 0 4px rgba(90,208,96,0.5); }
+.dot.err { background: var(--danger); }
+.anchor-name { font-size: 1.1rem; margin-bottom: 4px; }
+.room-title { color: var(--muted); font-size: 0.82rem; margin-bottom: 16px; }
+.stream-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; margin-bottom: 8px;
+}
+.stream-label {
+  font-size: 0.7rem; color: var(--gold); letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.stream-url {
+  font-size: 0.72rem; color: var(--muted); font-family: monospace;
+  word-break: break-all; line-height: 1.5; margin-bottom: 8px;
+}
+.stream-actions { display: flex; gap: 8px; }
+.btn {
+  padding: 6px 14px; border-radius: 6px; font-size: 0.75rem;
+  cursor: pointer; border: 1px solid var(--border);
+  background: transparent; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-weight: 300;
+  transition: all 0.2s;
+}
+.btn:hover { border-color: var(--gold); color: var(--gold); }
+.btn-gold { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+.btn-gold:hover { opacity: 0.9; }
+.btn-copy { border-color: var(--border); color: var(--muted); }
+.btn-copy:hover { border-color: var(--gold); color: var(--gold); }
+.btn-copy.copied { border-color: var(--success); color: var(--success); }
+.player-wrap {
+  background: #000; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border); margin-top: 12px;
+  display: none; aspect-ratio: 16/9;
+}
+.player-wrap.active { display: block; }
+.player-wrap video { width: 100%; height: 100%; object-fit: contain; }
+.empty-state {
+  text-align: center; padding: 40px 20px; color: var(--muted);
+  font-size: 0.85rem;
+}
+.empty-state .icon { font-size: 2rem; margin-bottom: 12px; }
+.hint {
+  margin-top: 16px; padding: 12px; background: rgba(255,215,0,0.04);
+  border: 1px solid rgba(255,215,0,0.1); border-radius: 8px;
+  font-size: 0.75rem; color: var(--muted); line-height: 1.6;
+}
+.toast {
+  position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%) translateY(60px);
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 8px 16px; border-radius: 6px; font-size: 0.78rem;
+  color: var(--text); transition: transform 0.3s; pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/flv.js@latest"></script>
+</head>
+<body>
+
+<h1>📡 SODA LiveGrabber</h1>
+<div class="subtitle">直播间流地址抓取工具</div>
+
+<div class="status-bar" id="statusBar">
+  <div class="dot" id="statusDot"></div>
+  <span id="statusText">检测中...</span>
+</div>
+
+<div id="contentArea">
+  <div class="empty-state">
+    <div class="icon">🔍</div>
+    <div>正在分析当前页面...</div>
+    <div style="font-size:0.75rem;margin-top:8px;">如在抖音/B站直播页，请等待自动检测</div>
+  </div>
+</div>
+
+<div class="hint" id="hintBox" style="display:none;">
+  💡 <b>提示：</b>如果未检测到流地址，请按 <b>F12</b> 打开开发者工具 → Network → 刷新页面 → 找到包含 <code>stream</code> 或 <code>pull</code> 的请求，复制其中的流地址。
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="popup.js"></script>
+</body>
+</html>

@@ -261,7 +261,6 @@ button { cursor: pointer; border: none; border-radius: 4px; font-size: 14px; pad
     <div class="nav-item" id="navTranscribe" onclick="switchView('transcribe')">🛠️ 转写服务</div>
     <div class="nav-item" id="navMusic" onclick="switchView('music')">🎵 音频工具</div>
     <div class="nav-item" id="navToolGovernance" onclick="switchView('toolGovernance')">🧰 工具治理中心</div>
-    <div class="nav-item" id="navLiveSource" onclick="switchView('liveSource')">📡 直播拉流</div>
     <div class="nav-item" id="logoutBtn" onclick="logout()">🚪 退出登录</div>
   </div>
   <div class="main-content">
@@ -519,58 +518,6 @@ button { cursor: pointer; border: none; border-radius: 4px; font-size: 14px; pad
       <div class="douyin-test-card tool-admin-card governance-tab" data-tab="emergency"><div class="transcribe-actions-title">紧急保护模式</div><div class="transcribe-actions-desc">开启后高成本公开工具进入白名单模式，后台仍可用。</div><select id="riskEmergency"><option value="false">关闭</option><option value="true">开启</option></select><div class="transcribe-actions-row" style="margin-top:12px;"><button class="bd" onclick="toggleEmergency(true)">一键开启</button><button class="bs" onclick="toggleEmergency(false)">关闭保护</button></div></div>
     </section>
 
-    <section class="page-view transcribe-page tool-admin-page" id="liveSourceView">
-      <div class="page-header">
-        <div>
-          <h2>📡 直播拉流管理</h2>
-          <div class="page-subtitle">管理直播拉流服务的运行状态、平台 Cookie、操作日志和统计。</div>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="bs" onclick="loadLiveSourceStats()">刷新</button>
-        </div>
-      </div>
-
-      <div class="transcribe-status-card tool-admin-card">
-        <div class="transcribe-status-title">服务状态</div>
-        <div class="transcribe-status-grid">
-          <div class="transcribe-status-item"><div class="k">服务状态</div><div class="v" id="lsStatus">-</div></div>
-          <div class="transcribe-status-item"><div class="k">总解析次数</div><div class="v" id="lsTotalParses">-</div></div>
-          <div class="transcribe-status-item"><div class="k">成功率</div><div class="v" id="lsSuccessRate">-</div></div>
-          <div class="transcribe-status-item"><div class="k">当前并发</div><div class="v" id="lsActiveStreams">-</div></div>
-        </div>
-      </div>
-
-      <div class="transcribe-status-card tool-admin-card">
-        <div class="transcribe-status-title">平台分布</div>
-        <div class="transcribe-status-grid" id="lsPlatformDist" style="margin-top:10px">
-          <div class="transcribe-status-item"><div class="v">加载中...</div></div>
-        </div>
-      </div>
-
-      <div class="transcribe-status-card tool-admin-card">
-        <div class="transcribe-status-title">Cookie 管理</div>
-        <div class="transcribe-status-desc">淘宝/京东/小红书需要 Cookie 才能解析。</div>
-        <div class="douyin-form-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-top:12px;" id="lsCookieList">
-          <div class="transcribe-status-item"><div class="v">加载中...</div></div>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <select id="lsCookiePlatform" style="width:140px;">
-            <option value="taobao">淘宝</option>
-            <option value="jd">京东</option>
-            <option value="xiaohongshu">小红书</option>
-          </select>
-          <textarea id="lsCookieValue" rows="2" placeholder="粘贴 Cookie 值..." style="flex:1;min-width:200px;"></textarea>
-          <button class="bp" onclick="saveLiveSourceCookie()">保存 Cookie</button>
-        </div>
-      </div>
-
-      <div class="transcribe-status-card tool-admin-card">
-        <div class="transcribe-status-title">操作日志</div>
-        <div class="transcribe-actions-row" style="margin-bottom:10px;"><button class="bs" onclick="loadLiveSourceLogs()">刷新日志</button></div>
-        <div id="lsLogsBox" style="max-height:300px;overflow-y:auto;font-size:12px;color:#aaa;line-height:1.8;">加载中...</div>
-      </div>
-    </section>
-
   </div>
 </div>
 <div class="overlay" id="overlay">
@@ -697,28 +644,24 @@ let douyinCurrentTaskId = '';
 const DOUYIN_PHASE_LABELS = { parsing: '解析链接', downloading: '下载素材', preprocessing: '音频预处理', transcribing: '转写中', queued: '排队中', completed: '已完成', error: '失败' };
 
 function switchView(view) {
-  currentView = ['works', 'transcribe', 'music', 'toolGovernance', 'liveSource'].includes(view) ? view : 'works';
+  currentView = ['works', 'transcribe', 'music', 'toolGovernance'].includes(view) ? view : 'works';
   const worksView = document.getElementById('worksView');
   const transcribeView = document.getElementById('transcribeView');
   const musicView = document.getElementById('musicView');
   const toolGovernanceView = document.getElementById('toolGovernanceView');
-  const liveSourceView = document.getElementById('liveSourceView');
   const navWorks = document.getElementById('navWorks');
   const navTranscribe = document.getElementById('navTranscribe');
   const navMusic = document.getElementById('navMusic');
   const navToolGovernance = document.getElementById('navToolGovernance');
-  const navLiveSource = document.getElementById('navLiveSource');
 
   if (worksView) worksView.classList.toggle('active', currentView === 'works');
   if (transcribeView) transcribeView.classList.toggle('active', currentView === 'transcribe');
   if (musicView) musicView.classList.toggle('active', currentView === 'music');
   if (toolGovernanceView) toolGovernanceView.classList.toggle('active', currentView === 'toolGovernance');
-  if (liveSourceView) liveSourceView.classList.toggle('active', currentView === 'liveSource');
   if (navWorks) navWorks.classList.toggle('active', currentView === 'works');
   if (navTranscribe) navTranscribe.classList.toggle('active', currentView === 'transcribe');
   if (navMusic) navMusic.classList.toggle('active', currentView === 'music');
   if (navToolGovernance) navToolGovernance.classList.toggle('active', currentView === 'toolGovernance');
-  if (navLiveSource) navLiveSource.classList.toggle('active', currentView === 'liveSource');
 
   if (currentView === 'music') loadMusicLimits();
   if (currentView === 'toolGovernance') loadToolGovernance();
@@ -1879,93 +1822,6 @@ function toast(msg, type) {
 // 自动登录
 if (tok()) { showAdmin(); } else { document.getElementById('loginPage').style.display='flex'; }
 
-// ── 直播拉流管理 ──
-const LS_API = 'https://api.soda567.dpdns.org';
-
-async function loadLiveSourceStats() {
-  try {
-    const r = await fetch(`${LS_API}/api/admin/stats`);
-    const d = await r.json();
-    if (!d.success) throw new Error(d.error || '获取失败');
-    const s = d.stats;
-    document.getElementById('lsStatus').textContent = '运行中';
-    document.getElementById('lsStatus').style.color = '#5ad060';
-    document.getElementById('lsTotalParses').textContent = s.total_parses || 0;
-    const total = s.total_parses || 0;
-    const success = s.total_parses - (s.total_errors || 0);
-    document.getElementById('lsSuccessRate').textContent = total > 0 ? ((success / total) * 100).toFixed(1) + '%' : '-';
-    document.getElementById('lsActiveStreams').textContent = s.active_streams || 0;
-
-    // 平台分布
-    const dist = s.platform_distribution || {};
-    const distEl = document.getElementById('lsPlatformDist');
-    distEl.innerHTML = Object.entries(dist).map(([k, v]) =>
-      `<div class="transcribe-status-item"><div class="k">${k}</div><div class="v">${v} 次</div></div>`
-    ).join('') || '<div class="transcribe-status-item"><div class="v">暂无数据</div></div>';
-
-    // Cookie 状态
-    loadLiveSourceCookies(d.platforms || {});
-  } catch (e) {
-    document.getElementById('lsStatus').textContent = '离线: ' + e.message;
-    document.getElementById('lsStatus').style.color = '#ff6b6b';
-  }
-}
-
-function loadLiveSourceCookies(platforms) {
-  const el = document.getElementById('lsCookieList');
-  el.innerHTML = Object.entries(platforms).map(([k, v]) => {
-    const hasCookie = v.has_cookie;
-    return `<div class="transcribe-status-item">
-      <div class="k">${v.name || k}</div>
-      <div class="v" style="color:${hasCookie ? '#5ad060' : '#888'}">${hasCookie ? '✅ 有 Cookie' : (v.needs_cookie ? '⚠️ 需要 Cookie' : '免 Cookie')}</div>
-    </div>`;
-  }).join('');
-}
-
-async function loadLiveSourceLogs() {
-  try {
-    const r = await fetch(`${LS_API}/api/admin/stats`);
-    const d = await r.json();
-    const logs = (d.stats && d.stats.recent_logs) || [];
-    const el = document.getElementById('lsLogsBox');
-    if (!logs.length) { el.innerHTML = '暂无日志'; return; }
-    el.innerHTML = logs.map(l => {
-      const time = l.time ? new Date(l.time).toLocaleString('zh-CN') : '';
-      const color = l.success ? '#5ad060' : '#ff6b6b';
-      return `<div style="border-bottom:1px solid #222;padding:4px 0;">
-        <span style="color:#666">${time}</span>
-        <span style="color:${color}">[${l.success ? 'OK' : 'FAIL'}]</span>
-        <span style="color:#aaa">${l.platform || '-'}</span>
-        <span style="color:#888;font-size:11px;">${l.error || l.url || ''}</span>
-      </div>`;
-    }).join('');
-  } catch (e) {
-    document.getElementById('lsLogsBox').textContent = '加载失败: ' + e.message;
-  }
-}
-
-async function saveLiveSourceCookie() {
-  const platform = document.getElementById('lsCookiePlatform').value;
-  const cookie = document.getElementById('lsCookieValue').value.trim();
-  if (!cookie) { alert('请输入 Cookie'); return; }
-  try {
-    const r = await fetch(`${LS_API}/api/admin/cookie`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ platform, cookie }),
-    });
-    const d = await r.json();
-    if (d.success) {
-      toast('Cookie 已保存', 'ok');
-      document.getElementById('lsCookieValue').value = '';
-      loadLiveSourceStats();
-    } else {
-      alert('保存失败: ' + (d.error || ''));
-    }
-  } catch (e) {
-    alert('保存失败: ' + e.message);
-  }
-}
 </script>
 </body>
 </html>
