@@ -1459,6 +1459,99 @@ function handleCover(input) {
   img.src = url;
 }
 
+const WORK_UPLOAD_MAX_RETRIES = 4;
+const WORK_UPLOAD_STALL_TIMEOUT_MS = 90000;
+
+async function getWorkR2Ticket(file, workType, token) {
+  const res = await fetch(apiUrl('/api/works/r2/presigned-upload'), {
+    method:'POST',
+    headers:{ 'Authorization':'Bearer ' + token, 'Content-Type':'application/json' },
+    body:JSON.stringify({ filename:file.name, size:file.size, content_type:file.type || 'application/octet-stream', type:workType })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.upload_url || !data.r2_key) throw new Error(data.message || `创建直传地址失败（HTTP ${res.status}）`);
+  return data;
+}
+
+function putWorkBlobToR2(file, ticket, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    let settled = false;
+    let stallTimer = 0;
+    const finish = error => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(stallTimer);
+      error ? reject(error) : resolve();
+    };
+    const armStallTimer = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        try { xhr.abort(); } catch (_) {}
+        finish(new Error('上传 90 秒没有进度'));
+      }, WORK_UPLOAD_STALL_TIMEOUT_MS);
+    };
+    xhr.open('PUT', ticket.upload_url, true);
+    xhr.setRequestHeader('Content-Type', ticket.content_type || file.type || 'application/octet-stream');
+    xhr.upload.onprogress = event => {
+      armStallTimer();
+      if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total);
+    };
+    xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? finish() : finish(new Error(`云存储返回 HTTP ${xhr.status}`));
+    xhr.onerror = () => finish(new Error('直传网络错误'));
+    xhr.onabort = () => finish(new Error('直传连接已中断'));
+    armStallTimer();
+    xhr.send(file);
+  });
+}
+
+async function uploadWorkBlobWithRetry(file, workType, token, onProgress) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= WORK_UPLOAD_MAX_RETRIES; attempt++) {
+    try {
+      const ticket = await getWorkR2Ticket(file, workType, token);
+      await putWorkBlobToR2(file, ticket, onProgress);
+      return ticket;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= WORK_UPLOAD_MAX_RETRIES) break;
+      await new Promise(resolve => setTimeout(resolve, Math.min(10000, 1000 * (2 ** (attempt - 1))) + Math.random() * 500));
+    }
+  }
+  throw lastError || new Error('直传失败');
+}
+
+async function saveNewWorkViaR2(file, metadata, token, progress) {
+  const mainTicket = await uploadWorkBlobWithRetry(file, metadata.type, token, ratio => progress(5 + Math.round(ratio * 70), `正在直传到云端：${file.name}`));
+  const coverInput = document.getElementById('coverInput');
+  const coverBlob = capturedCoverBlob || (coverInput.files && coverInput.files[0]) || null;
+  let coverTicket = null;
+  if (coverBlob) {
+    const coverFile = coverBlob instanceof File ? coverBlob : new File([coverBlob], 'cover.jpg', { type:coverBlob.type || 'image/jpeg' });
+    coverTicket = await uploadWorkBlobWithRetry(coverFile, 'photo', token, ratio => progress(76 + Math.round(ratio * 10), '正在上传封面图'));
+  }
+  progress(88, '文件已上传，正在写入扩展盘并校验');
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(apiUrl('/api/works/r2/complete'), {
+        method:'POST',
+        headers:{ 'Authorization':'Bearer ' + token, 'Content-Type':'application/json' },
+        body:JSON.stringify({ r2_key:mainTicket.r2_key, thumbnail_r2_key:coverTicket ? coverTicket.r2_key : '', filename:mainTicket.filename || file.name, ...metadata })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || `作品落盘失败（HTTP ${res.status}）`);
+      return data;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= 3) break;
+      progress(90, `落盘响应中断，正在确认结果 ${attempt + 1}/3`);
+      await new Promise(resolve => setTimeout(resolve, 1500 * attempt));
+    }
+  }
+  throw lastError || new Error('作品落盘失败');
+}
+
 async function saveWork() {
   const id = document.getElementById('editId').value;
   const mode = document.getElementById('uploadMode').value;
@@ -1534,7 +1627,23 @@ async function saveWork() {
   const t = tok();
   if (!t) { toast('未登录，请重新登录', 'err'); return; }
 
-  // 正式环境固定公网模式：小分块 + 多重试，优先稳定性
+  const setUploadProgress = (percent, label) => {
+    fill.style.width = Math.max(0, Math.min(100, percent)) + '%';
+    progPercent.textContent = Math.round(percent) + '%';
+    if (label) progFileName.textContent = label;
+  };
+  try {
+    await saveNewWorkViaR2(file, { title, type, year, status, description }, t, setUploadProgress);
+    setUploadProgress(100, '上传完成');
+    toast('上传成功', 'ok');
+    setTimeout(() => { uploadProgress.style.display='none'; loadWorks(); closePanel(); }, 500);
+    return;
+  } catch (r2Error) {
+    console.warn('R2 直传失败，切换固定分片备用通道:', r2Error);
+    setUploadProgress(0, `云端直传失败，正在切换备用通道：${file.name}`);
+  }
+
+  // 备用公网通道：分片大小在整个上传会话中必须保持固定。
   const CHUNK_SIZE = 2 * 1024 * 1024;
   const MAX_RETRIES = 8;
   const totalParts = Math.ceil(file.size / CHUNK_SIZE);
@@ -1542,25 +1651,6 @@ async function saveWork() {
 
   // 断点续传：记录已成功上传的分块
   const uploadedParts = new Set();
-  // 自适应分块：记录网络速度，动态调整分块大小
-  let adaptiveChunkSize = CHUNK_SIZE;
-  let speedSamples = [];
-
-  // 自适应分块大小：根据网络速度动态调整
-  function calcAdaptiveChunkSize() {
-    if (speedSamples.length < 2) return CHUNK_SIZE;
-    const avgSpeed = speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length; // bytes/sec
-    // 目标：每块 3-8 秒传完
-    const targetTime = 5; // 秒
-    let size = Math.floor(avgSpeed * targetTime);
-    // 限制范围：最小 512KB，最大 20MB
-    const minSize = 512 * 1024;
-    const maxSize = 20 * 1024 * 1024;
-    size = Math.max(minSize, Math.min(maxSize, size));
-    console.log(`自适应分块: avgSpeed=${(avgSpeed/1024/1024).toFixed(2)}MB/s, chunkSize=${(size/1024/1024).toFixed(2)}MB`);
-    return size;
-  }
-
   // 顺序上传 - 比并行更稳定，支持断点续传
   const uploadChunk = async (index, retry = 0) => {
     // 断点续传：跳过已上传的分块
@@ -1569,8 +1659,8 @@ async function saveWork() {
       return;
     }
 
-    const start = index * adaptiveChunkSize;
-    const end = Math.min(file.size, start + adaptiveChunkSize);
+    const start = index * CHUNK_SIZE;
+    const end = Math.min(file.size, start + CHUNK_SIZE);
     const chunk = file.slice(start, end);
     const chunkStartTime = Date.now();
 
@@ -1596,11 +1686,6 @@ async function saveWork() {
       };
       xhr.onload = () => {
         if (xhr.status === 200) {
-          // 记录网络速度样本
-          const elapsed = (Date.now() - chunkStartTime) / 1000;
-          if (elapsed > 0) speedSamples.push(chunk.size / elapsed);
-          if (speedSamples.length > 5) speedSamples.shift();
-          adaptiveChunkSize = calcAdaptiveChunkSize();
           uploadedParts.add(index); // 标记为已上传
           resolve();
         } else if (retry < MAX_RETRIES) {

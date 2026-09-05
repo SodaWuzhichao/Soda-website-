@@ -437,7 +437,7 @@ footer {
       <span>MEDIA</span>
     </div>
   </a>
-  <a href="/tools" class="nav-back">返回工具页</a>
+  <a href="/tools/" class="nav-back">返回工具页</a>
 </nav>
 
 <div class="container">
@@ -593,6 +593,8 @@ let activeUploadXhr = null;
 let activeR2Keys = [];
 let activeCancelToken = '';
 let pollCancelled = false;
+const MUSIC_UPLOAD_MAX_RETRIES = 5;
+const MUSIC_UPLOAD_STALL_TIMEOUT_MS = 90000;
 
 function getBackendBase() {
   const explicitBase = backendBaseInput ? (backendBaseInput.value || '').trim().replace(/\/$/, '') : '';
@@ -740,30 +742,95 @@ function humanTime(ms) {
 
 // ── R2 Direct Upload ────────────────────────────────────────────────────────
 
-function uploadToR2(file, presignedUrl) {
-  return new Promise((resolve) => {
+function uploadToR2(file, presignedUrl, onProgress) {
+  return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     activeUploadXhr = xhr;
     let lastPct = 0;
+    let settled = false;
+    let stallTimer = 0;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(stallTimer);
+      activeUploadXhr = null;
+      error ? reject(error) : resolve(true);
+    };
+    const armStallTimer = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        try { xhr.abort(); } catch (_) {}
+        finish(new Error('上传 90 秒没有进度，已自动重试'));
+      }, MUSIC_UPLOAD_STALL_TIMEOUT_MS);
+    };
     xhr.open('PUT', presignedUrl, true);
+    armStallTimer();
     xhr.upload.onprogress = (e) => {
+      armStallTimer();
       if (e.lengthComputable) {
         const pct = Math.round((e.loaded / e.total) * 100);
         if (pct !== lastPct) {
           lastPct = pct;
-          const overallPct = pct; // per-file progress shown
-          document.getElementById('progressBar').style.width = (overallPct * 0.25) + '%';
-          document.getElementById('progressPct').textContent = pct + '%';
-          setStatus(`上传中：${file.name} — ${pct}%`);
+          if (onProgress) onProgress(pct);
         }
       }
     };
-    xhr.onload = () => { activeUploadXhr = null; resolve(xhr.status >= 200 && xhr.status < 300); };
-    xhr.onerror = () => { activeUploadXhr = null; resolve(false); };
-    xhr.onabort = () => { activeUploadXhr = null; resolve(false); };
+    xhr.onload = () => xhr.status >= 200 && xhr.status < 300
+      ? finish()
+      : finish(new Error(`云存储返回 HTTP ${xhr.status}`));
+    xhr.onerror = () => finish(new Error('上传网络错误'));
+    xhr.onabort = () => finish(new Error(uploadAbortRequested ? '用户已取消上传' : '上传连接已中断'));
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.send(file);
   });
+}
+
+async function requestMusicUploadTicket(backendBase, file) {
+  const response = await fetchWithTimeout(backendBase + '/api/music/presigned-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filename: file.name,
+      count: 1,
+      total_size: file.size,
+      files: [{ filename: file.name, size: file.size }],
+    }),
+  }, 30000);
+  if (!response.ok) throw new Error(await response.text());
+  const data = await response.json();
+  const ticket = data.urls && data.urls[0];
+  if (!ticket || !ticket.url || !ticket.key) throw new Error('上传地址响应不完整');
+  return ticket;
+}
+
+async function uploadMusicFileWithRetry(backendBase, file, initialTicket, fileIndex, fileCount) {
+  let ticket = initialTicket;
+  let lastError = null;
+  for (let attempt = 1; attempt <= MUSIC_UPLOAD_MAX_RETRIES; attempt++) {
+    if (uploadAbortRequested) throw new Error('用户已取消上传');
+    if (attempt > 1 || !ticket || !ticket.url || !ticket.key) {
+      ticket = await requestMusicUploadTicket(backendBase, file);
+    }
+    if (!activeR2Keys.includes(ticket.key)) activeR2Keys.push(ticket.key);
+    try {
+      await uploadToR2(file, ticket.url, (pct) => {
+        const completedFiles = fileIndex;
+        const overallPct = Math.round(((completedFiles + pct / 100) / fileCount) * 25);
+        document.getElementById('progressBar').style.width = overallPct + '%';
+        document.getElementById('progressPct').textContent = pct + '%';
+        const retryText = attempt > 1 ? `（重试 ${attempt}/${MUSIC_UPLOAD_MAX_RETRIES}）` : '';
+        setStatus(`上传中 (${fileIndex + 1}/${fileCount})：${file.name} — ${pct}% ${retryText}`);
+      });
+      return ticket;
+    } catch (error) {
+      lastError = error;
+      if (uploadAbortRequested || attempt >= MUSIC_UPLOAD_MAX_RETRIES) break;
+      setStatus(`${file.name} 上传中断，正在自动重试 ${attempt + 1}/${MUSIC_UPLOAD_MAX_RETRIES}…`, 'warn');
+      await new Promise(resolve => setTimeout(resolve, Math.min(15000, 1000 * (2 ** (attempt - 1))) + Math.random() * 500));
+      ticket = null; // 每次重试刷新签名 URL，避免使用已经过期的地址。
+    }
+  }
+  throw lastError || new Error('上传失败');
 }
 
 async function uploadFiles() {
@@ -811,21 +878,17 @@ async function uploadFiles() {
       throw new Error(await presignResp.text());
     }
     const { urls } = await presignResp.json();
+    if (!Array.isArray(urls) || urls.length !== queuedFiles.length) {
+      throw new Error('上传地址数量与文件数量不一致');
+    }
 
     // Upload each file directly to R2
     const r2Keys = [];
     for (let fi = 0; fi < queuedFiles.length; fi++) {
       const { file } = queuedFiles[fi];
-      const { url, key } = urls[fi] || urls[0];
-      r2Keys.push(key);
-      activeR2Keys = r2Keys.slice();
+      const ticket = await uploadMusicFileWithRetry(backendBase, file, urls[fi], fi, queuedFiles.length);
+      r2Keys.push(ticket.key);
       if (uploadAbortRequested) throw new Error('用户已取消上传');
-      setStatus(`上传中 (${fi + 1}/${queuedFiles.length})：${file.name}`);
-      const ok = await uploadToR2(file, url);
-      if (uploadAbortRequested) throw new Error('用户已取消上传');
-      if (!ok) {
-        throw new Error('上传到云存储失败，请重试。');
-      }
       const pct = Math.round(((fi + 1) / queuedFiles.length) * 25);
       document.getElementById('progressBar').style.width = pct + '%';
       document.getElementById('progressPct').textContent = pct + '%';

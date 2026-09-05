@@ -190,7 +190,7 @@ nav {
     <span style="font-weight:200;font-family:'DM Sans',sans-serif;letter-spacing:3.5px;font-size:0.65em;opacity:0.8;color:#fff;margin-top:2px;">MEDIA</span>
   </div>
 </a>
-  <a href="/tools" class="nav-back">返回工具页</a>
+  <a href="/tools/" class="nav-back">返回工具页</a>
 </nav>
 
 <div class="container">
@@ -736,8 +736,11 @@ function writeString(view, offset, string) {
   }
 }
 
-const TRANSCRIBE_CHUNK_SIZE = 512 * 1024;
-const TRANSCRIBE_MAX_RETRIES = 3;
+// 备用通道走 Tunnel；8MB 能显著减少请求数，同时避免单片过大。
+const TRANSCRIBE_CHUNK_SIZE = 8 * 1024 * 1024;
+const TRANSCRIBE_MAX_RETRIES = 5;
+const TRANSCRIBE_R2_MAX_RETRIES = 3;
+const TRANSCRIBE_UPLOAD_STALL_TIMEOUT_MS = 90000;
 const TRANSCRIBE_STATUS_POLL_MS = 3000;
 const CANCELLED_ERROR_MESSAGE = '用户已取消';
 let transcribeState = {
@@ -931,7 +934,7 @@ async function uploadChunkToServer(file, fileId, idx, totalParts, onProgress) {
     xhr.onerror = () => { clearCurrentXhr(xhr); reject(new Error(`分片 ${idx + 1} 网络错误`)); };
     xhr.onabort = () => { clearCurrentXhr(xhr); reject(new Error(CANCELLED_ERROR_MESSAGE)); };
     xhr.ontimeout = () => { clearCurrentXhr(xhr); reject(new Error(`分片 ${idx + 1} 上传超时`)); };
-    xhr.timeout = 600000;
+    xhr.timeout = 90000;
     xhr.open('POST', API_BASE + '/api/transcribe/upload_chunk');
     xhr.send(formData);
   });
@@ -978,21 +981,36 @@ function uploadToR2(file, uploadUrl, contentType, onProgress) {
   return new Promise((resolve, reject) => {
     ensureNotCancelled();
     const xhr = setCurrentXhr(new XMLHttpRequest());
+    let settled = false;
+    let stallTimer = 0;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(stallTimer);
+      clearCurrentXhr(xhr);
+      error ? reject(error) : resolve(true);
+    };
+    const armStallTimer = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        try { xhr.abort(); } catch (_) {}
+        finish(new Error('上传 90 秒没有进度'));
+      }, TRANSCRIBE_UPLOAD_STALL_TIMEOUT_MS);
+    };
     xhr.upload.onprogress = (e) => {
+      armStallTimer();
       if (!e.lengthComputable || !onProgress) return;
       onProgress(e.loaded, e.total);
     };
     xhr.onload = () => {
-      clearCurrentXhr(xhr);
-      if (xhr.status >= 200 && xhr.status < 300) resolve(true);
-      else reject(new Error('上传到云存储失败，请重试'));
+      if (xhr.status >= 200 && xhr.status < 300) finish();
+      else finish(new Error(`上传到云存储失败（HTTP ${xhr.status}）`));
     };
-    xhr.onerror = () => { clearCurrentXhr(xhr); reject(new Error(getFriendlyNetworkError('upload'))); };
-    xhr.onabort = () => { clearCurrentXhr(xhr); reject(new Error(CANCELLED_ERROR_MESSAGE)); };
-    xhr.ontimeout = () => { clearCurrentXhr(xhr); reject(new Error('上传超时，请重试')); };
-    xhr.timeout = 30 * 60 * 1000;
+    xhr.onerror = () => finish(new Error(getFriendlyNetworkError('upload')));
+    xhr.onabort = () => finish(new Error(transcribeState.cancelled ? CANCELLED_ERROR_MESSAGE : '上传连接已中断'));
     xhr.open('PUT', uploadUrl, true);
     xhr.setRequestHeader('Content-Type', contentType || 'application/octet-stream');
+    armStallTimer();
     xhr.send(file);
   });
 }
@@ -1069,15 +1087,22 @@ async function uploadFileToServerViaR2(file, originalName, lang, mode, vadEnable
 
 async function uploadFileToServer(file, originalName, lang, mode, vadEnabled) {
   let r2Error = null;
-  try {
-    return await uploadFileToServerViaR2(file, originalName, lang, mode, vadEnabled);
-  } catch (err) {
-    if (isCancelledError(err) || transcribeState.taskId) throw err;
-    r2Error = err;
-    const reason = getUploadChannelError('主通道', err);
-    console.warn('主上传通道（R2 直传）失败，回退到备用分片上传:', err);
-    setProgress(2, `${reason}，正在切换备用通道...`);
+  for (let attempt = 1; attempt <= TRANSCRIBE_R2_MAX_RETRIES; attempt++) {
+    try {
+      return await uploadFileToServerViaR2(file, originalName, lang, mode, vadEnabled);
+    } catch (err) {
+      if (isCancelledError(err) || transcribeState.taskId) throw err;
+      r2Error = err;
+      console.warn(`主上传通道第 ${attempt}/${TRANSCRIBE_R2_MAX_RETRIES} 次失败:`, err);
+      if (attempt < TRANSCRIBE_R2_MAX_RETRIES) {
+        setProgress(2, `主通道中断，正在刷新上传地址并重试 ${attempt + 1}/${TRANSCRIBE_R2_MAX_RETRIES}...`);
+        await sleep(1000 * (2 ** (attempt - 1)) + Math.random() * 500);
+      }
+    }
   }
+
+  const reason = getUploadChannelError('主通道', r2Error);
+  setProgress(2, `${reason}，正在切换备用通道...`);
 
   try {
     return await uploadFileToServerChunked(file, originalName, lang, mode, vadEnabled);
