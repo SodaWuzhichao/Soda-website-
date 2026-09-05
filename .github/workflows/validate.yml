@@ -19,3 +19,5 @@ jobs:
           node-version: 22
       - name: Check inline JavaScript syntax
         run: node scripts/check-inline-js.mjs
+      - name: Check static entrypoints and tool links
+        run: node scripts/check-entrypoints.mjs
