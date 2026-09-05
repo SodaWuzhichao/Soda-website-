@@ -7,7 +7,7 @@ check() {
   local expected="${3:-200}"
   local code
 
-  code="$(/usr/bin/curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 20 "$url" 2>/dev/null || true)"
+  code="$(/usr/bin/curl --noproxy '*' -sS -L -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 20 "$url" 2>/dev/null || true)"
   if [ "$code" = "$expected" ]; then
     printf 'OK   %-18s HTTP %s\n' "$name" "$code"
     return 0
