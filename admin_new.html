@@ -683,6 +683,14 @@ function showAdmin() {
 function logout() {
   currentView = 'works';
   transcribeScannedOnce = false;
+  const token = tok();
+  if (token) {
+    fetch(apiUrl('/api/auth/logout'), {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer ' + token },
+      keepalive:true
+    }).catch(() => {});
+  }
   localStorage.removeItem('soda_token');
   document.getElementById('adminLayout').style.display = 'none';
   document.getElementById('loginPage').style.display = 'flex';
