@@ -1,7 +1,31 @@
 # 备份文件
 backup/
+_sandbox/
+backend/
+*.bak
+*.bak.*
+*.backup
+*.backup_*
 *.old
 *_old.html
+
+# 大型源素材；部署只保留优化后的 WebP
+images/cover1.jpg
+images/cover2.jpg
+images/cover3.jpg
+
+# 本地环境与凭证
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.pyc
+logs/
+uploads/
+outputs/
+temp/
 
 # 系统文件
 .DS_Store

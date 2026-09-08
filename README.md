@@ -1,109 +1,59 @@
 # SODA567 个人网站
 
-## 📁 项目结构
+静态前端托管在 GitHub Pages，公开入口为 <https://soda567.dpdns.org/>。动态 API、管理接口和媒体处理服务运行在 Mac mini；大媒体与运行数据保存在长期挂载的 `SodaMedia` 扩展盘。
+
+## 项目边界
+
+这个仓库只保存可以公开部署的前端源码：
+
+```text
+Soda-website/
+├── index.html          # 作品主页
+├── admin_new.html      # 管理界面（服务端鉴权）
+├── admin/              # /admin 静态入口
+├── tools/              # 在线工具界面
+├── images/             # 已优化、会被页面使用的小型图片
+├── scripts/            # 静态检查和生产冒烟检查
+├── functions/          # 兼容性代理源码
+└── docs/               # 架构与运维说明
 ```
-soda567/
-├── index.html          # 主页
-├── admin_new.html      # 后台管理（密码：soda567）
-├── tools/
-│   └── index.html      # 在线工具页
-└── images/
-    └── profile.jpg     # 个人照片
+
+以下内容不得进入本仓库：后端代码副本、密码或云存储密钥、媒体源文件、上传与转换结果、模型、虚拟环境、日志、手工备份和实验沙盒。
+
+完整的本地/扩展盘分工见 [docs/storage-layout.md](docs/storage-layout.md)。
+
+## 修改与发布
+
+1. 修改前检查 `git status`，保留不属于本次工作的改动。
+2. 运行：
+
+   ```bash
+   node scripts/check-inline-js.mjs
+   node scripts/check-entrypoints.mjs
+   bash scripts/ops-smoke.sh
+   ```
+
+3. 提交并推送 `main` 后，由 GitHub Pages 发布。
+4. 发布后用真实浏览器验证主页及受影响工具。涉及上传的修改必须验证完整的上传、处理、状态查询和下载链路。
+
+## 运行服务
+
+- 主 API：`~/Documents/soda-server/backend`
+- 音乐转换代码：`~/Documents/soda-services/music-converter`
+- 音乐运行数据：`/Volumes/SodaMedia/SodaData/music-converter`
+- 公开媒体：`/Volumes/SodaMedia/Media`
+- 服务启动项：`~/Library/LaunchAgents/com.soda.*.plist`
+- 运维脚本：`~/Library/Scripts/`
+
+服务凭证必须来自 macOS 钥匙串或受限环境变量，禁止写入代码、README、HTML 或 Git 历史。
+
+## 故障检查
+
+```bash
+bash scripts/ops-smoke.sh
+launchctl print gui/$(id -u)/com.soda.server
+launchctl print gui/$(id -u)/com.soda.music-converter
+tail -n 100 /tmp/soda-watchdog.log
 ```
 
-## 🚀 部署到 soda567.dpdns.org
-
-### 方法一：使用 GitHub Pages（推荐）
-
-1. 在 GitHub 创建仓库
-2. 上传所有文件
-3. 在仓库设置中启用 GitHub Pages
-4. 在 digitalplat.org 设置 DNS 指向 GitHub Pages
-
-### 方法二：使用 FTP 上传
-
-1. 获取 FTP 账号信息
-2. 使用 FileZilla 等工具上传所有文件
-3. 确保 index.html 在根目录
-
----
-
-## 🤖 Agent 操作规范
-
-> **约束先行**：进入本项目目录，第一件事永远是完整阅读此区块。没有读完之前，不许动手改任何东西。
-
-### 修改流程（铁律）
-
-1. **必须先拉取远程最新代码**
-   ```bash
-   git fetch origin
-   git pull origin main
-   ```
-   ⚠️ 禁止跳过此步骤！
-
-2. **对比差异**
-   ```bash
-   git diff origin/main
-   ```
-   确认本地和远程没有冲突。
-
-3. **本地修改**
-
-4. **同步部署**
-   | 文件 | 部署位置 |
-   |------|----------|
-   | index.html | GitHub → Cloudflare Pages |
-   | admin_new.html | GitHub + soda-server/backend/ |
-   | livestream.html | GitHub → Cloudflare Pages |
-   | tools/*.html | GitHub → Cloudflare Pages |
-
-   如果修改了 admin_new.html，需要同步到 Flask 目录：
-   ```bash
-   cp admin_new.html ~/Documents/soda-server/backend/
-   pkill -f "python.*app.py"
-   cd ~/Documents/soda-server/backend && nohup python3 app.py &
-   ```
-
-5. **提交并推送**
-   ```bash
-   git add 修改的文件
-   git commit -m "描述修改内容"
-   git push origin main
-   ```
-
-6. **验证部署**
-   - 展示页：https://soda567.dpdns.org/
-   - 后台：https://admin.soda567.dpdns.org/
-
-### 🚫 禁止事项
-- **禁止使用 git push --force** （除非得到伍老师明确同意）
-- **禁止在 Cloudflare 后台直接编辑代码**——所有修改必须在本地完成后推送
-- 禁止直接上传大文件到 Cloudflare（100MB限制）：使用 Tailscale 直连 `http://100.73.100.90:5001/admin`
-
-### 🧪 实验规则
-- 所有实验性修改放在 `_sandbox/` 目录
-- `_sandbox/` 里的内容超过 30 天自动删除
-- 实验验证通过后，移动到正式目录
-
----
-
-## ⚙️ 配置
-
-### Google Analytics
-在 index.html 第 666 行替换 `G-XXXXXXXXXX` 为你的 GA ID
-
-### 后台管理
-- 访问：https://soda567.dpdns.org/admin_new.html
-- 密码：soda567
-- 修改密码：编辑 admin_new.html 第 246 行
-
-## 📝 使用说明
-
-1. 后台添加/编辑作品
-2. 点击"💾 保存并同步到主页"
-3. 刷新主页查看效果
-
-## 🔧 维护
-
-- 作品数据存储在浏览器 localStorage
-- 定期使用"📦 导出备份"功能备份数据
+`ops-smoke.sh` 会验证音乐接口的真实 POST/CORS 响应，而不只检查健康页面。

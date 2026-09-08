@@ -1,80 +1,29 @@
-# CLAUDE.md - Soda Website 项目规范
+# Soda Website 维护约定
 
-> 本文件是 Soda-website 项目的宪法。所有修改必须遵守本文件约定的规则。
+## 唯一事实源
 
-## 📂 项目结构
+- 本仓库只负责可公开部署的静态前端。
+- `~/Documents/soda-server/backend` 是主 API 的唯一运行源码。
+- `~/Documents/soda-services/music-converter` 是音乐服务的唯一运行源码。
+- `/Volumes/SodaMedia/SodaData` 保存工具运行数据；`/Volumes/SodaMedia/Media` 保存正式媒体。
+- 不在前端仓库复制后端，不在扩展盘运行音乐服务源码。
 
-```
-Soda-website/
-├── index.html          # 主展示页
-├── admin_new.html      # 后台管理页（通过 Flask 服务）
-├── livestream.html     # 直播案例页
-├── tools/              # 工具页面目录
-├── images/             # 图片资源目录
-└── _sandbox/          # 实验性内容（超过30天自动清理）
-```
+## 修改规则
 
-## 📋 修改流程（铁律）
+1. 修改前查看 `git status` 和相关运行服务，避免覆盖其他工作。
+2. 大文件、模型、日志、上传、输出和临时数据不得写入本仓库或系统盘。
+3. 所有凭证使用钥匙串或环境变量，禁止硬编码和提交。
+4. 不使用 `pkill` 批量重启；通过对应的 `com.soda.*` launchd 服务精确重启。
+5. 不用健康接口代替业务验证。上传类工具必须走完上传、处理、轮询和下载。
+6. 实验文件放在扩展盘的 `Archives` 隔离目录，不放入 GitHub Pages 发布树。
 
-### 1. 拉取远程最新代码
+## 发布前检查
+
 ```bash
-git fetch origin
-git pull origin main
-```
-⚠️ 禁止跳过此步骤！
-
-### 2. 对比本地和远程差异
-```bash
-git diff origin/main
-```
-确认要修改的文件，确保不会覆盖别人的修改。
-
-### 3. 本地修改
-
-### 4. 同步到所有部署位置
-| 文件 | 部署位置 |
-|------|----------|
-| index.html | GitHub → Cloudflare Pages |
-| admin_new.html | GitHub + soda-server/backend/ |
-| livestream.html | GitHub → Cloudflare Pages |
-| tools/*.html | GitHub → Cloudflare Pages |
-
-如果修改了 admin_new.html，需要同步到 Flask 目录：
-```bash
-cp ~/Documents/Soda-website/admin_new.html ~/Documents/soda-server/backend/
-# 然后重启 Flask
-pkill -f "python.*app.py"
-cd ~/Documents/soda-server/backend && nohup python3 app.py &
+node scripts/check-inline-js.mjs
+node scripts/check-entrypoints.mjs
+bash scripts/ops-smoke.sh
+git diff --check
 ```
 
-### 5. 提交并推送
-```bash
-git add 修改的文件
-git commit -m "描述修改内容"
-git push origin main
-```
-
-### 6. 验证部署
-- 展示页：https://soda567.dpdns.org/
-- 后台：https://admin.soda567.dpdns.org/
-
-## 🚫 禁止事项
-
-- **禁止使用 git push --force**（除非得到伍老师明确同意）
-- **禁止在 Cloudflare 后台直接编辑代码**——所有修改必须在本地完成后推送
-- 禁止直接上传大文件到 Cloudflare（100MB限制）：使用 Tailscale 直连 `http://100.73.100.90:5001/admin`
-
-## 🧪 实验规则
-
-- 所有实验性修改放在 `_sandbox/` 目录
-- `_sandbox/` 里的内容超过 30 天自动删除
-- 实验验证通过后，移动到正式目录
-
-## 📅 备份
-
-- 每天凌晨 3 点 Openclaw 自动备份
-- 备份位置：`~/.openclaw-backups/`
-
----
-
-_最后更新：2026-04-15_
+禁止强制推送，除非用户明确授权 Git 历史清理。
