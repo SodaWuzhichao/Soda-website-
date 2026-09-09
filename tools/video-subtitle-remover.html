@@ -200,6 +200,7 @@ footer { padding:28px 48px; border-top:1px solid var(--border); font-size:.75rem
 const DEFAULT_COORDS = { x: 0, y: 0.78, w: 1, h: 0.18, coord_mode: 'relative' };
 const API_BASE = 'https://api.soda567.dpdns.org';
 const TOKEN_KEY = 'soda_access_token';
+const UPLOAD_SESSION_KEY = 'soda_video_subtitle_upload_session_v1';
 const CHUNK_UPLOAD_SIZE = 8 * 1024 * 1024;
 const CHUNK_UPLOAD_RETRIES = 5;
 const CHUNK_UPLOAD_TIMEOUT_MS = 90000;
@@ -269,10 +270,24 @@ let timelinePreview = null;
 let dragHasSelection = false;
 let fullVideoUrl = '';
 let removalType = 'subtitle';
+const segmentPreviewObjectUrls = new Map();
 
 function getSodaAccessToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
 function setSodaAccessToken(value) { const token = String(value || '').trim(); token ? localStorage.setItem(TOKEN_KEY, token) : localStorage.removeItem(TOKEN_KEY); }
 function withSodaAccessToken(headers = {}) { const token = getSodaAccessToken(); if (token) headers['X-Soda-Access-Token'] = token; return headers; }
+function clearSavedUploadSession() { localStorage.removeItem(UPLOAD_SESSION_KEY); }
+async function verifySodaAccessToken(rawToken, sizeBytes = 0) {
+  const token = String(rawToken || '').trim();
+  if (!token) throw new Error('请先填写访问码。');
+  const res = await fetch(apiUrl('/api/access-token/verify'), {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body:JSON.stringify({ access_token:token, tool_key:'video_subtitle_remover', size_bytes:Number(sizeBytes) || 0 })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.valid) throw new Error(friendlyErrorMessage(data, `访问码验证失败（HTTP ${res.status}）`));
+  return data;
+}
 function apiUrl(path) { return API_BASE + path; }
 function escapeHtml(value) { return String(value || '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 function formatTime(seconds) { const s = Math.max(0, Number(seconds) || 0); const m = Math.floor(s / 60); const rest = Math.floor(s % 60).toString().padStart(2, '0'); const ms = Math.round((s % 1) * 10); return ms ? `${m}:${rest}.${ms}` : `${m}:${rest}`; }
@@ -676,13 +691,30 @@ async function uploadOneChunk(uploadId, index, blob, totalChunks, uploadedSet, p
 }
 async function uploadVideoInChunks(file, purpose = 'fallback') {
   setProgress(5);
-  setStatus(purpose === 'watermark' ? '正在创建完整视频上传会话，用于去水印…' : '备用路径：正在创建分片上传会话…', 'warn');
-  const session = await createUploadSession(file);
+  setStatus(purpose === 'watermark' ? '正在恢复或创建完整视频上传会话，用于去水印…' : '备用路径：正在恢复或创建分片上传会话…', 'warn');
+  let session = null;
+  let status = null;
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(UPLOAD_SESSION_KEY) || 'null'); } catch (_) { clearSavedUploadSession(); }
+  const sameFile = saved && saved.filename === file.name && Number(saved.size) === file.size && Number(saved.lastModified) === Number(file.lastModified) && saved.purpose === purpose;
+  if (sameFile && saved.uploadId) {
+    try {
+      status = await fetchJsonWithError(apiUrl('/api/video-subtitle-remover/uploads/' + encodeURIComponent(saved.uploadId)), { headers:withSodaAccessToken({}) });
+      session = status;
+      setStatus(`已恢复上次上传：${(status.uploaded_chunks || []).length}/${status.total_chunks || '?'} 个分片。`, 'warn');
+    } catch (_) {
+      clearSavedUploadSession();
+    }
+  }
+  if (!session) {
+    session = await createUploadSession(file);
+    localStorage.setItem(UPLOAD_SESSION_KEY, JSON.stringify({ uploadId:session.upload_id, filename:file.name, size:file.size, lastModified:file.lastModified, purpose }));
+  }
   const uploadId = session.upload_id;
   if (!uploadId) throw new Error('后端未返回 upload_id');
   const chunkSize = Number(session.chunk_size) || CHUNK_UPLOAD_SIZE;
   const totalChunks = Number(session.total_chunks) || Math.ceil(file.size / chunkSize);
-  const status = await fetchJsonWithError(apiUrl('/api/video-subtitle-remover/uploads/' + encodeURIComponent(uploadId)), { headers:withSodaAccessToken({}) });
+  if (!status) status = await fetchJsonWithError(apiUrl('/api/video-subtitle-remover/uploads/' + encodeURIComponent(uploadId)), { headers:withSodaAccessToken({}) });
   const uploadedSet = new Set(Array.isArray(status.uploaded_chunks) ? status.uploaded_chunks : []);
   for (let index = 0; index < totalChunks; index++) {
     if (uploadedSet.has(index)) continue;
@@ -694,6 +726,7 @@ async function uploadVideoInChunks(file, purpose = 'fallback') {
   setStatus(purpose === 'watermark' ? '完整视频分片已上传完成，正在合并…' : '备用路径：分片已上传完成，正在合并…', 'warn');
   const completed = await fetchJsonWithError(apiUrl('/api/video-subtitle-remover/uploads/' + encodeURIComponent(uploadId) + '/complete'), { method:'POST', headers:withSodaAccessToken({}) });
   if (!completed.source_path) throw new Error('后端未返回合并后的视频路径');
+  clearSavedUploadSession();
   setProgress(90);
   return { uploadId, sourcePath:completed.source_path };
 }
@@ -853,7 +886,12 @@ async function submitTask() {
     if (!currentFile) throw new Error('请先上传视频文件');
     const submitSegments = removalType === 'watermark' ? getWatermarkSubmitSegment() : getSubmitSegments();
     const token = (el.accessToken.value || '').trim();
-    if (token !== getSodaAccessToken()) setSodaAccessToken(token);
+    if (token !== getSodaAccessToken()) {
+      setSodaAccessToken(token);
+      clearSavedUploadSession();
+    }
+    setStatus('正在验证访问码和文件额度…', 'warn');
+    await verifySodaAccessToken(token, currentFile.size);
     stopPolling();
     el.submitBtn.disabled = true;
     el.downloadArea.classList.remove('active');
@@ -904,18 +942,35 @@ function phaseLabel(phase) {
   if (text === 'joining_chunks') return '正在拼回长片段';
   return text || '-';
 }
+async function hydrateSegmentPreviews() {
+  const previews = Array.from(el.segmentResultList.querySelectorAll('.segment-preview[data-url]'));
+  await Promise.all(previews.map(async (video) => {
+    try {
+      const cachedUrl = segmentPreviewObjectUrls.get(video.dataset.url);
+      if (cachedUrl) { video.src = cachedUrl; return; }
+      const res = await fetch(apiUrl(video.dataset.url), { headers:withSodaAccessToken({}) });
+      if (!res.ok) throw new Error(await readError(res));
+      const objectUrl = URL.createObjectURL(await res.blob());
+      segmentPreviewObjectUrls.set(video.dataset.url, objectUrl);
+      video.src = objectUrl;
+    } catch (error) {
+      video.replaceWith(Object.assign(document.createElement('div'), { className:'status err', textContent:'预览加载失败：' + error.message }));
+    }
+  }));
+}
 function renderSegmentResults(task) {
   const list = task && Array.isArray(task.segments) ? task.segments : [];
   if (!list.length) { el.segmentResultList.innerHTML = ''; return; }
   el.segmentResultList.innerHTML = list.map((seg) => {
     const cls = seg.status === 'succeeded' ? 'succeeded' : (seg.status === 'failed' ? 'failed' : '');
-    const preview = seg.status === 'succeeded' && seg.preview_url ? `<video controls playsinline src="${apiUrl(seg.preview_url)}"></video>` : '';
+    const preview = seg.status === 'succeeded' && seg.preview_url ? `<video class="segment-preview" controls playsinline data-url="${escapeHtml(seg.preview_url)}"></video>` : '';
     const download = seg.status === 'succeeded' && seg.download_url ? `<button class="btn btn-primary segment-download" type="button" data-url="${seg.download_url}" data-index="${seg.index || ''}">下载片段</button>` : '';
     const retry = seg.status === 'failed' ? `<button class="btn btn-secondary segment-retry" type="button" data-id="${seg.segment_id}">重试片段</button>` : '';
     const err = seg.error ? `<div class="status err">${escapeHtml(seg.error)}</div>` : '';
     const sub = seg.sub_segments ? ` · 子片段 ${seg.sub_segments.current || 0}/${seg.sub_segments.total || 0}` : '';
     return `<div class="segment-card ${cls}"><div>片段 ${seg.index || '-'}：${seg.start}s - ${seg.end}s · ${seg.status || 'queued'} · ${phaseLabel(seg.phase)}${sub}</div>${err}${preview}<div class="btn-group">${download}${retry}</div></div>`;
   }).join('');
+  void hydrateSegmentPreviews();
 }
 function renderComposeControls(task) {
   const list = task && Array.isArray(task.segments) ? task.segments : [];
@@ -1048,8 +1103,22 @@ el.submitBtn.addEventListener('click', submitTask);
 el.downloadBtn.addEventListener('click', downloadResult);
 el.composeBtn.addEventListener('click', composeFullVideo);
 el.downloadFullBtn.addEventListener('click', downloadFullVideo);
-el.saveTokenBtn.addEventListener('click', () => { setSodaAccessToken(el.accessToken.value); setStatus(getSodaAccessToken() ? '访问码已保存。' : '访问码为空，已清除。', 'ok'); });
-el.clearTokenBtn.addEventListener('click', () => { el.accessToken.value = ''; setSodaAccessToken(''); setStatus('访问码已清除。', 'warn'); });
+el.saveTokenBtn.addEventListener('click', async () => {
+  const token = (el.accessToken.value || '').trim();
+  if (!token) { setSodaAccessToken(''); clearSavedUploadSession(); setStatus('访问码为空，已清除。', 'warn'); return; }
+  el.saveTokenBtn.disabled = true;
+  try {
+    await verifySodaAccessToken(token, currentFile ? currentFile.size : 0);
+    if (token !== getSodaAccessToken()) clearSavedUploadSession();
+    setSodaAccessToken(token);
+    setStatus('访问码已验证并保存。', 'ok');
+  } catch (error) {
+    setSodaAccessToken('');
+    clearSavedUploadSession();
+    setStatus('访问码未保存：' + error.message, 'err');
+  } finally { el.saveTokenBtn.disabled = false; }
+});
+el.clearTokenBtn.addEventListener('click', () => { el.accessToken.value = ''; setSodaAccessToken(''); clearSavedUploadSession(); setStatus('访问码已清除。', 'warn'); });
 el.segmentList.addEventListener('click', (event) => {
   const removeBtn = event.target.closest('.segment-remove');
   const activeBtn = event.target.closest('.segment-active');
@@ -1128,7 +1197,7 @@ el.timelineTrack.addEventListener('pointerup', (event) => {
   addSegment(start, finish, hasCurrentRegion ? [cloneCurrentRegion()] : []);
   el.timelineHint.textContent = '已添加时间片段，可继续添加框或提交。';
 });
-window.addEventListener('beforeunload', () => { stopPolling(); if (objectUrl) URL.revokeObjectURL(objectUrl); });
+window.addEventListener('beforeunload', () => { stopPolling(); if (objectUrl) URL.revokeObjectURL(objectUrl); segmentPreviewObjectUrls.forEach((url) => URL.revokeObjectURL(url)); });
 
 el.accessToken.value = getSodaAccessToken();
 applyRemovalMode('subtitle');

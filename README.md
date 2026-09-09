@@ -44,6 +44,7 @@ Soda-website/
 - 公开媒体：`/Volumes/SodaMedia/Media`
 - 服务启动项：`~/Library/LaunchAgents/com.soda.*.plist`
 - 运维脚本：`~/Library/Scripts/`
+- Nginx 配置基线：`ops/nginx/soda.conf`（部署目标 `/opt/homebrew/etc/nginx/servers/soda.conf`）
 
 服务凭证必须来自 macOS 钥匙串或受限环境变量，禁止写入代码、README、HTML 或 Git 历史。
 
@@ -56,4 +57,4 @@ launchctl print gui/$(id -u)/com.soda.music-converter
 tail -n 100 /tmp/soda-watchdog.log
 ```
 
-`ops-smoke.sh` 会验证音乐接口的真实 POST/CORS 响应，而不只检查健康页面。
+`ops-smoke.sh` 不只检查健康页面，还会用无副作用的失败请求验证音乐转换、转文案、抖音提取和视频去字幕的真实 POST 路由及 CORS。转文案与抖音的 `/api/transcribe*`、状态查询 `/api/status*` 必须经过主后端 `5001`；`5003` 只允许作为内部 Whisper worker。
